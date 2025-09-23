@@ -15,7 +15,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun MainMenu(onStartGame: () -> Unit) {
+fun TetrisMenuGame(onStartGame: () -> Unit,onNavigateShooterMenu: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -76,6 +76,15 @@ fun MainMenu(onStartGame: () -> Unit) {
                 text = "EXIT",
                 onClick = {},
                 backgroundColor = Color(0xFFF44336)
+            )
+
+
+            MenuButton(
+                text = "NEXT GAME",
+                onClick = {
+                    onNavigateShooterMenu()
+                },
+                backgroundColor = Color(0xFF673AB7)
             )
         }
     }

@@ -9,8 +9,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.example.tetrisgame.ui.Screen
+import com.example.tetrisgame.ui.ShooterGame
+import com.example.tetrisgame.ui.ShooterMenuGame
 import com.example.tetrisgame.ui.theme.TetrisGameTheme
-import com.example.tetrisgame.ui.MainMenu
+import com.example.tetrisgame.ui.TetrisMenuGame
 import com.example.tetrisgame.ui.TetrisGame
 
 class MainActivity : ComponentActivity() {
@@ -23,7 +26,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TetrisApp()
+                    MainScreen()
                 }
             }
         }
@@ -31,16 +34,23 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun TetrisApp() {
-    var currentScreen by remember { mutableStateOf("menu") }
+fun MainScreen() {
+    var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
 
     when (currentScreen) {
-        "menu" -> MainMenu(
-            onStartGame = { currentScreen = "game" }
+        Screen.TETRIS_MENU -> TetrisMenuGame(
+            onStartGame = { currentScreen = Screen.TETRIS_GAME },
+            onNavigateShooterMenu = { currentScreen = Screen.SHOOTER_MENU }
         )
-
-        "game" -> TetrisGame(
-            onBackToMenu = { currentScreen = "menu" }
+        Screen.TETRIS_GAME -> TetrisGame(
+            onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
+        )
+        Screen.SHOOTER_MENU -> ShooterMenuGame(
+            onStartGame = { currentScreen = Screen.SHOOTER_GAME },
+            onNavigateTetrisMenu = { currentScreen = Screen.TETRIS_MENU }
+        )
+        Screen.SHOOTER_GAME -> ShooterGame(
+            onBackToMenu = { currentScreen = Screen.SHOOTER_MENU }
         )
     }
 }
