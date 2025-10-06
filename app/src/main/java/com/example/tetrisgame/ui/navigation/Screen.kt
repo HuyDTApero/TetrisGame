@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.navigation
 
 enum class Screen {
     TETRIS_MENU,

@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.input
 
 import android.content.Context
 import android.os.Build

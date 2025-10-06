@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,10 +20,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tetrisgame.data.Achievement
-import com.example.tetrisgame.data.AchievementCategory
-import com.example.tetrisgame.data.AchievementManager
-import com.example.tetrisgame.data.AchievementRarity
+import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.data.models.AchievementCategory
+import com.example.tetrisgame.data.models.AchievementRarity
+import com.example.tetrisgame.data.managers.AchievementManager
 
 @Composable
 fun AchievementsScreen(

@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,8 +18,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.tetrisgame.data.GameTheme
-import com.example.tetrisgame.data.SettingsManager
+import com.example.tetrisgame.data.models.GameTheme
+import com.example.tetrisgame.data.managers.SettingsManager
 import kotlinx.coroutines.launch
 
 @Composable

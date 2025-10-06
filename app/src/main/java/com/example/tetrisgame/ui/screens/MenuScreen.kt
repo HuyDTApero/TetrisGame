@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*

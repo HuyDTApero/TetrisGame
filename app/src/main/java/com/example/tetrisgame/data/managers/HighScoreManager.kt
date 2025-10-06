@@ -1,4 +1,4 @@
-package com.example.tetrisgame.data
+package com.example.tetrisgame.data.managers
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -7,26 +7,15 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.example.tetrisgame.data.models.HighScoreEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
-/**
- * Represents a single high score entry
- */
-@Serializable
-data class HighScoreEntry(
-    val score: Int,
-    val lines: Int,
-    val level: Int,
-    val date: String
-)
 
 /**
  * Manages high score persistence using DataStore

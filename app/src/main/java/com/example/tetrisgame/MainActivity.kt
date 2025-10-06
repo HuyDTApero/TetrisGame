@@ -26,13 +26,16 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import com.example.tetrisgame.ui.AchievementUnlockDialog
-import com.example.tetrisgame.ui.AchievementsScreen
-import com.example.tetrisgame.ui.HighScoresScreen
-import com.example.tetrisgame.ui.Screen
-import com.example.tetrisgame.ui.SettingsScreen
-import com.example.tetrisgame.ui.TetrisGame
-import com.example.tetrisgame.ui.TetrisMenuGame
+import com.example.tetrisgame.data.managers.SettingsManager
+import com.example.tetrisgame.data.managers.HighScoreManager
+import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.ui.components.dialogs.AchievementUnlockDialog
+import com.example.tetrisgame.ui.navigation.Screen
+import com.example.tetrisgame.ui.screens.AchievementsScreen
+import com.example.tetrisgame.ui.screens.HighScoresScreen
+import com.example.tetrisgame.ui.screens.SettingsScreen
+import com.example.tetrisgame.ui.screens.TetrisGame
+import com.example.tetrisgame.ui.screens.TetrisMenuGame
 import com.example.tetrisgame.ui.theme.TetrisGameTheme
 
 class MainActivity : ComponentActivity() {
@@ -67,16 +70,16 @@ fun MainScreen() {
     val context = LocalContext.current
 
     // Settings manager
-    val settingsManager = remember { com.example.tetrisgame.data.SettingsManager(context) }
+    val settingsManager = remember { SettingsManager(context) }
     val isSfxEnabled by settingsManager.isSfxEnabled.collectAsState(initial = true)
     val isMusicEnabled by settingsManager.isMusicEnabled.collectAsState(initial = true)
 
     // High score manager
-    val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
+    val highScoreManager = remember { HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
 
     // Achievement queue
-    var unlockedAchievements by remember { mutableStateOf<List<com.example.tetrisgame.data.Achievement>>(emptyList()) }
+    var unlockedAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
     var showAchievementDialog by remember { mutableStateOf(false) }
 
     // Show achievements when returning to menu

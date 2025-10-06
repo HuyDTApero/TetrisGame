@@ -21,6 +21,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tetrisgame.game.*
+import com.example.tetrisgame.ui.effects.ParticleSystem
+import com.example.tetrisgame.ui.effects.LineClearAnimation
+import com.example.tetrisgame.ui.effects.drawLineClearFlash
 import kotlinx.coroutines.delay
 
 @Composable

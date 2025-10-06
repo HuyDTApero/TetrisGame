@@ -1,4 +1,8 @@
-package com.example.tetrisgame.data
+package com.example.tetrisgame.data.managers
+
+import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.data.models.AchievementCategory
+import com.example.tetrisgame.data.models.Achievements
 
 import android.content.Context
 import androidx.datastore.core.DataStore

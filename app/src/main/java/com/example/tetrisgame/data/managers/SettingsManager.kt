@@ -1,4 +1,6 @@
-package com.example.tetrisgame.data
+package com.example.tetrisgame.data.managers
+
+import com.example.tetrisgame.data.models.GameTheme
 
 import android.content.Context
 import androidx.datastore.core.DataStore
@@ -10,16 +12,6 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-
-/**
- * Theme options
- */
-enum class GameTheme {
-    NEON,      // Default neon theme
-    CLASSIC,   // Classic Tetris colors
-    DARK,      // Dark mode
-    PASTEL     // Soft pastel colors
-}
 
 /**
  * Manages app settings using DataStore

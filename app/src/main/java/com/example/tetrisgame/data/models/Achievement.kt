@@ -1,4 +1,4 @@
-package com.example.tetrisgame.data
+package com.example.tetrisgame.data.models
 
 import kotlinx.serialization.Serializable
 

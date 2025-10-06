@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.components.dialogs
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -20,8 +20,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import com.example.tetrisgame.data.Achievement
-import com.example.tetrisgame.data.AchievementRarity
+import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.data.models.AchievementRarity
 import kotlinx.coroutines.delay
 
 @Composable

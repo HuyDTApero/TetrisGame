@@ -1,4 +1,4 @@
-package com.example.tetrisgame.ui
+package com.example.tetrisgame.ui.effects
 
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
