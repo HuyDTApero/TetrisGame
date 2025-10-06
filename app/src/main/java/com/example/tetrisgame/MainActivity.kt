@@ -13,15 +13,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.tetrisgame.ui.HighScoresScreen
 import com.example.tetrisgame.ui.Screen
 import com.example.tetrisgame.ui.TetrisGame
 import com.example.tetrisgame.ui.TetrisMenuGame
@@ -56,21 +59,31 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
+    val context = LocalContext.current
 
     // Persistent audio preferences
     val isSoundEnabled = remember { mutableStateOf(true) }
     val isMusicEnabled = remember { mutableStateOf(true) }
 
+    // High score manager
+    val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
+    val highScore by highScoreManager.highScore.collectAsState(initial = 0)
+
     when (currentScreen) {
         Screen.TETRIS_MENU -> TetrisMenuGame(
             onStartGame = { currentScreen = Screen.TETRIS_GAME },
+            onHighScores = { currentScreen = Screen.HIGH_SCORES },
             isSoundEnabled = isSoundEnabled,
-            isMusicEnabled = isMusicEnabled
+            isMusicEnabled = isMusicEnabled,
+            highScore = highScore
         )
         Screen.TETRIS_GAME -> TetrisGame(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
             isSoundEnabled = isSoundEnabled.value,
             isMusicEnabled = isMusicEnabled.value
+        )
+        Screen.HIGH_SCORES -> HighScoresScreen(
+            onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
         )
 
         Screen.SHOOTER_MENU -> {}

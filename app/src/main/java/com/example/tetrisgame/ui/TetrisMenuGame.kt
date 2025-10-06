@@ -22,8 +22,10 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun TetrisMenuGame(
     onStartGame: () -> Unit,
+    onHighScores: () -> Unit,
     isSoundEnabled: MutableState<Boolean>,
-    isMusicEnabled: MutableState<Boolean>
+    isMusicEnabled: MutableState<Boolean>,
+    highScore: Int = 0
 ) {
     Box(
         modifier = Modifier
@@ -61,6 +63,34 @@ fun TetrisMenuGame(
                 letterSpacing = 2.sp
             )
 
+            // High Score Display
+            if (highScore > 0) {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = Color(0xFF1A1A2E).copy(alpha = 0.8f)
+                    ),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "🏆 HIGH SCORE",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD700)
+                        )
+                        Text(
+                            text = highScore.toString(),
+                            fontSize = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF00D4FF)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(32.dp))
 
             MenuButton(
@@ -71,7 +101,7 @@ fun TetrisMenuGame(
 
             MenuButton(
                 text = "HIGH SCORES",
-                onClick = {},
+                onClick = onHighScores,
                 backgroundColor = Color(0xFF4CAF50)
             )
 

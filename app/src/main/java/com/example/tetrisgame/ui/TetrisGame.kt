@@ -55,6 +55,8 @@ fun TetrisGame(
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
     val hapticManager = remember { HapticFeedbackManager(context) }
     val shakeController = rememberShakeController()
+    val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
+    val highScore by highScoreManager.highScore.collectAsState(initial = 0)
 
     // Cleanup sound manager
     DisposableEffect(Unit) {
@@ -115,11 +117,19 @@ fun TetrisGame(
         previousLevel = gameState.level
     }
 
-    // Detect game over
+    // Detect game over and save score
     LaunchedEffect(gameState.isGameOver) {
-        if (gameState.isGameOver && isSoundEnabled) {
-            soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
-            hapticManager.onGameOver()
+        if (gameState.isGameOver) {
+            if (isSoundEnabled) {
+                soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
+                hapticManager.onGameOver()
+            }
+            // Save game result
+            highScoreManager.saveGameResult(
+                score = gameState.score,
+                lines = gameState.lines,
+                level = gameState.level
+            )
         }
     }
 
@@ -222,6 +232,7 @@ fun TetrisGame(
 
         GameOverDialog(
             gameState = gameState,
+            highScore = highScore,
             onRestart = {
                 gameState = engine.resetGame()
                 gameState = engine.spawnNewPiece(gameState)

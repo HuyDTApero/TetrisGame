@@ -494,24 +494,83 @@ private fun GameButton(
 @Composable
 fun GameOverDialog(
     gameState: TetrisGameState,
+    highScore: Int,
     onRestart: () -> Unit,
     onBackToMenu: () -> Unit
 ) {
     if (gameState.isGameOver) {
+        val isNewHighScore = gameState.score > 0 && gameState.score >= highScore
+
         AlertDialog(
             onDismissRequest = { },
             title = {
-                Text(
-                    text = "GAME OVER",
-                    color = Color.Red,
-                    fontWeight = FontWeight.Bold
-                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "GAME OVER",
+                        color = Color.Red,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 24.sp
+                    )
+                    if (isNewHighScore) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "🏆 NEW HIGH SCORE! 🏆",
+                            color = Color(0xFFFFD700), // Gold
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
             },
             text = {
-                Column {
-                    Text("Final Score: ${gameState.score}")
-                    Text("Level: ${gameState.level}")
-                    Text("Lines: ${gameState.lines}")
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    // Current Score
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Score:", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = gameState.score.toString(),
+                            color = if (isNewHighScore) Color(0xFFFFD700) else Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // High Score
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("High Score:", fontWeight = FontWeight.Bold)
+                        Text(
+                            text = highScore.toString(),
+                            color = Color.Cyan,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Level and Lines
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Level:", fontWeight = FontWeight.Bold)
+                        Text(gameState.level.toString())
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Lines:", fontWeight = FontWeight.Bold)
+                        Text(gameState.lines.toString())
+                    }
                 }
             },
             confirmButton = {
