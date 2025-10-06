@@ -167,15 +167,17 @@ data class GameBoard(
         return GameBoard(newCells)
     }
 
-    fun clearLines(): Pair<GameBoard, Int> {
+    fun clearLines(): Triple<GameBoard, Int, List<Int>> {
         val newCells = mutableListOf<List<Color?>>()
         var clearedLines = 0
+        val clearedLineIndices = mutableListOf<Int>()
 
-        for (row in cells) {
+        for ((index, row) in cells.withIndex()) {
             if (row.any { it == null }) {
                 newCells.add(row)
             } else {
                 clearedLines++
+                clearedLineIndices.add(index)
             }
         }
 
@@ -183,7 +185,7 @@ data class GameBoard(
             newCells.add(0, List(BOARD_WIDTH) { null })
         }
 
-        return Pair(GameBoard(newCells), clearedLines)
+        return Triple(GameBoard(newCells), clearedLines, clearedLineIndices)
     }
 }
 
@@ -195,7 +197,8 @@ data class TetrisGameState(
     val level: Int = 1,
     val lines: Int = 0,
     val isGameOver: Boolean = false,
-    val isPaused: Boolean = false
+    val isPaused: Boolean = false,
+    val lastClearedLines: List<Int> = emptyList() // For animations
 ) {
     fun calculateDropSpeed(): Long {
         return maxOf(50, 1000 - (level - 1) * 100).toLong()

@@ -107,7 +107,7 @@ class TetrisEngine {
         val newBoard = gameState.board.placePiece(piece)
 
         // Clear completed lines
-        val (clearedBoard, linesCleared) = newBoard.clearLines()
+        val (clearedBoard, linesCleared, clearedLineIndices) = newBoard.clearLines()
 
         // Calculate score
         val lineScore = calculateLineScore(linesCleared, gameState.level)
@@ -121,7 +121,8 @@ class TetrisEngine {
             currentPiece = null,
             score = newScore,
             lines = newLines,
-            level = newLevel
+            level = newLevel,
+            lastClearedLines = clearedLineIndices
         )
 
         // Spawn new piece

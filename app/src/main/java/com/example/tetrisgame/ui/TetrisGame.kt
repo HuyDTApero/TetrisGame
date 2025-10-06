@@ -18,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.offset
 import com.example.tetrisgame.audio.EnhancedSoundManager
 import com.example.tetrisgame.audio.MusicGenerator
 import com.example.tetrisgame.game.TetrisEngine
@@ -52,6 +53,8 @@ fun TetrisGame(
 
     val musicGenerator = remember { MusicGenerator() }
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
+    val hapticManager = remember { HapticFeedbackManager(context) }
+    val shakeController = rememberShakeController()
 
     // Cleanup sound manager
     DisposableEffect(Unit) {
@@ -85,14 +88,19 @@ fun TetrisGame(
         }
     }
 
-    // Detect score changes for sound effects
+    // Detect score changes for sound effects, haptics, and screen shake
     LaunchedEffect(gameState.score) {
         if (gameState.score > previousScore && isSoundEnabled) {
             val scoreIncrease = gameState.score - previousScore
             if (scoreIncrease >= 1200) {
                 soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
+                hapticManager.onTetris()
+                shakeController.shake(intensity = 20f, duration = 200)
             } else if (scoreIncrease > 0) {
                 soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
+                hapticManager.onLineClear()
+                val linesCleared = gameState.lastClearedLines.size
+                shakeController.shake(intensity = 5f * linesCleared, duration = 100)
             }
         }
         previousScore = gameState.score
@@ -102,6 +110,7 @@ fun TetrisGame(
     LaunchedEffect(gameState.level) {
         if (gameState.level > previousLevel && isSoundEnabled) {
             soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
+            hapticManager.onLevelUp()
         }
         previousLevel = gameState.level
     }
@@ -110,6 +119,7 @@ fun TetrisGame(
     LaunchedEffect(gameState.isGameOver) {
         if (gameState.isGameOver && isSoundEnabled) {
             soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
+            hapticManager.onGameOver()
         }
     }
 
@@ -140,12 +150,19 @@ fun TetrisGame(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Game Board (takes most space)
-            TetrisBoard(
-                gameState = gameState,
+            Box(
                 modifier = Modifier
                     .weight(1f)
                     .wrapContentSize()
-            )
+                    .offset(
+                        x = shakeController.getOffset().x.dp,
+                        y = shakeController.getOffset().y.dp
+                    )
+            ) {
+                TetrisBoard(
+                    gameState = gameState
+                )
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -156,6 +173,7 @@ fun TetrisGame(
                         gameState = engine.movePieceLeft(gameState)
                         if (isSoundEnabled) {
                             soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            hapticManager.onMove()
                         }
                     }
                 },
@@ -164,6 +182,7 @@ fun TetrisGame(
                         gameState = engine.movePieceRight(gameState)
                         if (isSoundEnabled) {
                             soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            hapticManager.onMove()
                         }
                     }
                 },
@@ -172,6 +191,7 @@ fun TetrisGame(
                         gameState = engine.movePieceDown(gameState)
                         if (isSoundEnabled) {
                             soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            hapticManager.onMove()
                         }
                     }
                 },
@@ -180,6 +200,7 @@ fun TetrisGame(
                         gameState = engine.rotatePiece(gameState)
                         if (isSoundEnabled) {
                             soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            hapticManager.onRotate()
                         }
                     }
                 },
@@ -188,6 +209,7 @@ fun TetrisGame(
                         gameState = engine.hardDrop(gameState)
                         if (isSoundEnabled) {
                             soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                            hapticManager.onLock()
                         }
                     }
                 },

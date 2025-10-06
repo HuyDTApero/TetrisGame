@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tetrisgame.game.*
+import kotlinx.coroutines.delay
 
 @Composable
 fun TetrisBoard(
@@ -28,6 +29,45 @@ fun TetrisBoard(
     modifier: Modifier = Modifier
 ) {
     val cellSize = 28.dp
+    val cellSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { cellSize.toPx() }
+
+    // Animation state
+    val particleSystem = remember { ParticleSystem() }
+    var currentAnimation by remember { mutableStateOf<LineClearAnimation?>(null) }
+
+    // Detect new line clears
+    LaunchedEffect(gameState.lastClearedLines) {
+        if (gameState.lastClearedLines.isNotEmpty()) {
+            currentAnimation = LineClearAnimation(gameState.lastClearedLines)
+
+            // Emit particles for each cleared line
+            gameState.lastClearedLines.forEach { lineIndex ->
+                // Emit particles across the line
+                for (col in 0 until BOARD_WIDTH) {
+                    val x = (col + 0.5f) * cellSizePx
+                    val y = (lineIndex + 0.5f) * cellSizePx
+                    val color = gameState.board.cells.getOrNull(lineIndex)?.getOrNull(col)
+                        ?: Color.White
+                    particleSystem.emit(x, y, color, count = 5)
+                }
+            }
+        }
+    }
+
+    // Update particle system
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(16) // ~60 FPS
+            particleSystem.update(0.016f)
+
+            // Clear animation when finished
+            currentAnimation?.let { animation ->
+                if (animation.isFinished()) {
+                    currentAnimation = null
+                }
+            }
+        }
+    }
 
     Card(
         modifier = modifier
@@ -37,11 +77,22 @@ fun TetrisBoard(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
     ) {
         Canvas(
-            modifier = Modifier
-                .size(cellSize * BOARD_WIDTH, cellSize * BOARD_HEIGHT)
-                .padding(4.dp)
+            modifier = Modifier.size(cellSize * BOARD_WIDTH, cellSize * BOARD_HEIGHT)
         ) {
             drawTetrisBoard(gameState, cellSize.toPx())
+
+            // Draw line clear flash animation
+            currentAnimation?.let { animation ->
+                drawLineClearFlash(
+                    lineIndices = animation.lineIndices,
+                    cellSize = cellSize.toPx(),
+                    boardWidth = BOARD_WIDTH,
+                    progress = animation.getProgress()
+                )
+            }
+
+            // Draw particles
+            particleSystem.draw(this)
         }
     }
 }
