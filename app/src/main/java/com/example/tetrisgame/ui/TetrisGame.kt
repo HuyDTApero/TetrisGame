@@ -144,6 +144,9 @@ fun TetrisGame(
             CompactGameHeader(
                 gameState = gameState,
                 onBackToMenu = onBackToMenu,
+                onPauseToggle = {
+                    gameState = engine.togglePause(gameState)
+                },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -213,10 +216,6 @@ fun TetrisGame(
                         }
                     }
                 },
-                onPause = {
-                    gameState = engine.togglePause(gameState)
-                },
-                isPaused = gameState.isPaused,
                 modifier = Modifier.fillMaxWidth()
             )
         }
@@ -230,34 +229,17 @@ fun TetrisGame(
             onBackToMenu = onBackToMenu
         )
 
-        if (gameState.isPaused && !gameState.isGameOver) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Card(
-                    shape = RoundedCornerShape(16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = TetrisTheme.CardBg.copy(alpha = 0.95f)
-                    ),
-                    modifier = Modifier.border(
-                        width = 2.dp,
-                        color = TetrisTheme.NeonCyan,
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                ) {
-                    Text(
-                        text = "PAUSED",
-                        color = TetrisTheme.NeonCyan,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(40.dp)
-                    )
-                }
-            }
-        }
+        PauseMenuDialog(
+            gameState = gameState,
+            onResume = {
+                gameState = engine.togglePause(gameState)
+            },
+            onRestart = {
+                gameState = engine.resetGame()
+                gameState = engine.spawnNewPiece(gameState)
+            },
+            onBackToMenu = onBackToMenu
+        )
     }
 }
 
@@ -265,6 +247,7 @@ fun TetrisGame(
 private fun CompactGameHeader(
     gameState: TetrisGameState,
     onBackToMenu: () -> Unit,
+    onPauseToggle: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -284,16 +267,29 @@ private fun CompactGameHeader(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Back Button
-        IconButton(
-            onClick = onBackToMenu,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Back",
-                tint = TetrisTheme.NeonCyan
-            )
+        // Back and Pause Buttons
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconButton(
+                onClick = onBackToMenu,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "Back",
+                    tint = TetrisTheme.NeonCyan
+                )
+            }
+
+            IconButton(
+                onClick = onPauseToggle,
+                modifier = Modifier.size(40.dp)
+            ) {
+                Icon(
+                    imageVector = if (gameState.isPaused) Icons.Default.PlayArrow else Icons.Default.Clear,
+                    contentDescription = if (gameState.isPaused) "Resume" else "Pause",
+                    tint = TetrisTheme.NeonYellow
+                )
+            }
         }
 
         // Score
@@ -393,8 +389,6 @@ private fun TetrisStyledControls(
     onMoveDown: () -> Unit,
     onRotate: () -> Unit,
     onHardDrop: () -> Unit,
-    onPause: () -> Unit,
-    isPaused: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -452,15 +446,6 @@ private fun TetrisStyledControls(
                 modifier = Modifier.size(60.dp)
             )
         }
-
-        // Bottom Row: Pause
-        TetrisButton(
-            onClick = onPause,
-            icon = if (isPaused) Icons.Default.PlayArrow else Icons.Default.Clear,
-            label = if (isPaused) "RESUME" else "PAUSE",
-            color = TetrisTheme.NeonYellow,
-            modifier = Modifier.size(width = 140.dp, height = 50.dp)
-        )
     }
 }
 
@@ -508,5 +493,161 @@ private fun TetrisButton(
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun PauseMenuDialog(
+    gameState: TetrisGameState,
+    onResume: () -> Unit,
+    onRestart: () -> Unit,
+    onBackToMenu: () -> Unit
+) {
+    if (gameState.isPaused && !gameState.isGameOver) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.7f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                shape = RoundedCornerShape(20.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = TetrisTheme.CardBg.copy(alpha = 0.98f)
+                ),
+                modifier = Modifier
+                    .padding(24.dp)
+                    .border(
+                        width = 3.dp,
+                        brush = Brush.linearGradient(
+                            colors = listOf(
+                                TetrisTheme.NeonCyan,
+                                TetrisTheme.NeonPink,
+                                TetrisTheme.NeonPurple
+                            )
+                        ),
+                        shape = RoundedCornerShape(20.dp)
+                    )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .padding(32.dp)
+                        .width(280.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(20.dp)
+                ) {
+                    // Title
+                    Text(
+                        text = "⏸ PAUSED",
+                        color = TetrisTheme.NeonCyan,
+                        fontSize = 36.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Game Stats
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = TetrisTheme.DarkBg.copy(alpha = 0.6f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Score:", color = TetrisTheme.NeonYellow, fontSize = 16.sp)
+                                Text(
+                                    gameState.score.toString(),
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Level:", color = TetrisTheme.NeonPink, fontSize = 16.sp)
+                                Text(
+                                    gameState.level.toString(),
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("Lines:", color = TetrisTheme.NeonGreen, fontSize = 16.sp)
+                                Text(
+                                    gameState.lines.toString(),
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Menu Buttons
+                    PauseMenuButton(
+                        text = "▶ RESUME",
+                        color = TetrisTheme.NeonGreen,
+                        onClick = onResume
+                    )
+
+                    PauseMenuButton(
+                        text = "↻ RESTART",
+                        color = TetrisTheme.NeonYellow,
+                        onClick = onRestart
+                    )
+
+                    PauseMenuButton(
+                        text = "← MAIN MENU",
+                        color = TetrisTheme.NeonPink,
+                        onClick = onBackToMenu
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PauseMenuButton(
+    text: String,
+    color: Color,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .shadow(8.dp, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = color.copy(alpha = 0.2f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(2.dp, color)
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }
