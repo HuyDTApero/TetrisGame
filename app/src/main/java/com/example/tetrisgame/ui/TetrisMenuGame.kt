@@ -3,8 +3,13 @@ package com.example.tetrisgame.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -15,7 +20,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun TetrisMenuGame(onStartGame: () -> Unit) {
+fun TetrisMenuGame(
+    onStartGame: () -> Unit,
+    isSoundEnabled: MutableState<Boolean>,
+    isMusicEnabled: MutableState<Boolean>
+) {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -77,6 +86,54 @@ fun TetrisMenuGame(onStartGame: () -> Unit) {
                 onClick = {},
                 backgroundColor = Color(0xFFF44336)
             )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Audio Controls Section
+            Card(
+                modifier = Modifier
+                    .width(220.dp)
+                    .padding(8.dp),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF1A1A1A).copy(alpha = 0.7f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text(
+                        text = "AUDIO SETTINGS",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00D4FF),
+                        letterSpacing = 1.sp
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        AudioToggleButton(
+                            label = "SFX",
+                            isEnabled = isSoundEnabled.value,
+                            onToggle = { isSoundEnabled.value = !isSoundEnabled.value },
+                            enabledColor = Color(0xFF4CAF50),
+                            icon = Icons.Default.Notifications
+                        )
+
+                        AudioToggleButton(
+                            label = "MUSIC",
+                            isEnabled = isMusicEnabled.value,
+                            onToggle = { isMusicEnabled.value = !isMusicEnabled.value },
+                            enabledColor = Color(0xFF2196F3),
+                            icon = Icons.Default.Star
+                        )
+                    }
+                }
+            }
         }
     }
 }
@@ -107,6 +164,42 @@ private fun MenuButton(
             fontWeight = FontWeight.Bold,
             color = Color.White,
             letterSpacing = 1.sp
+        )
+    }
+}
+
+@Composable
+private fun AudioToggleButton(
+    label: String,
+    isEnabled: Boolean,
+    onToggle: () -> Unit,
+    enabledColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector
+) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        IconButton(
+            onClick = onToggle,
+            modifier = Modifier.size(48.dp),
+            colors = IconButtonDefaults.iconButtonColors(
+                containerColor = if (isEnabled) enabledColor else Color.Gray
+            )
+        ) {
+            Icon(
+                imageVector = if (isEnabled) icon else Icons.Default.Close,
+                contentDescription = label,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+
+        Text(
+            text = label,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (isEnabled) enabledColor else Color.Gray
         )
     }
 }
