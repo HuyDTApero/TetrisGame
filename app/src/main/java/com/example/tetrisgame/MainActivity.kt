@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tetrisgame.ui.HighScoresScreen
 import com.example.tetrisgame.ui.Screen
+import com.example.tetrisgame.ui.SettingsScreen
 import com.example.tetrisgame.ui.TetrisGame
 import com.example.tetrisgame.ui.TetrisMenuGame
 import com.example.tetrisgame.ui.theme.TetrisGameTheme
@@ -61,9 +62,10 @@ fun MainScreen() {
     var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
     val context = LocalContext.current
 
-    // Persistent audio preferences
-    val isSoundEnabled = remember { mutableStateOf(true) }
-    val isMusicEnabled = remember { mutableStateOf(true) }
+    // Settings manager
+    val settingsManager = remember { com.example.tetrisgame.data.SettingsManager(context) }
+    val isSfxEnabled by settingsManager.isSfxEnabled.collectAsState(initial = true)
+    val isMusicEnabled by settingsManager.isMusicEnabled.collectAsState(initial = true)
 
     // High score manager
     val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
@@ -73,16 +75,18 @@ fun MainScreen() {
         Screen.TETRIS_MENU -> TetrisMenuGame(
             onStartGame = { currentScreen = Screen.TETRIS_GAME },
             onHighScores = { currentScreen = Screen.HIGH_SCORES },
-            isSoundEnabled = isSoundEnabled,
-            isMusicEnabled = isMusicEnabled,
+            onSettings = { currentScreen = Screen.SETTINGS },
             highScore = highScore
         )
         Screen.TETRIS_GAME -> TetrisGame(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
-            isSoundEnabled = isSoundEnabled.value,
-            isMusicEnabled = isMusicEnabled.value
+            isSoundEnabled = isSfxEnabled,
+            isMusicEnabled = isMusicEnabled
         )
         Screen.HIGH_SCORES -> HighScoresScreen(
+            onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
+        )
+        Screen.SETTINGS -> SettingsScreen(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
         )
 

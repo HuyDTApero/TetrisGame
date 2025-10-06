@@ -52,12 +52,29 @@ fun TetrisGame(
     var previousLevel by remember { mutableStateOf(1) }
     var showGestureHint by remember { mutableStateOf(true) }
 
+    // Settings Manager - read all settings
+    val settingsManager = remember { com.example.tetrisgame.data.SettingsManager(context) }
+    val sfxVolume by settingsManager.sfxVolume.collectAsState(initial = 0.7f)
+    val musicVolume by settingsManager.musicVolume.collectAsState(initial = 0.5f)
+    val isHapticEnabled by settingsManager.isHapticEnabled.collectAsState(initial = true)
+    val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
+    val currentTheme by settingsManager.theme.collectAsState(initial = com.example.tetrisgame.data.GameTheme.NEON)
+
     val musicGenerator = remember { MusicGenerator() }
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
     val hapticManager = remember { HapticFeedbackManager(context) }
     val shakeController = rememberShakeController()
     val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
+
+    // Apply volume settings
+    LaunchedEffect(sfxVolume) {
+        soundManager.setSoundVolume(sfxVolume)
+    }
+
+    LaunchedEffect(musicVolume) {
+        musicGenerator.setVolume(musicVolume)
+    }
 
     // Cleanup sound manager
     DisposableEffect(Unit) {
@@ -93,15 +110,15 @@ fun TetrisGame(
 
     // Detect score changes for sound effects, haptics, and screen shake
     LaunchedEffect(gameState.score) {
-        if (gameState.score > previousScore && isSoundEnabled) {
+        if (gameState.score > previousScore) {
             val scoreIncrease = gameState.score - previousScore
             if (scoreIncrease >= 1200) {
-                soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
-                hapticManager.onTetris()
+                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
+                if (isHapticEnabled) hapticManager.onTetris()
                 shakeController.shake(intensity = 20f, duration = 200)
             } else if (scoreIncrease > 0) {
-                soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
-                hapticManager.onLineClear()
+                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
+                if (isHapticEnabled) hapticManager.onLineClear()
                 val linesCleared = gameState.lastClearedLines.size
                 shakeController.shake(intensity = 5f * linesCleared, duration = 100)
             }
@@ -111,9 +128,9 @@ fun TetrisGame(
 
     // Detect level up
     LaunchedEffect(gameState.level) {
-        if (gameState.level > previousLevel && isSoundEnabled) {
-            soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
-            hapticManager.onLevelUp()
+        if (gameState.level > previousLevel) {
+            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
+            if (isHapticEnabled) hapticManager.onLevelUp()
         }
         previousLevel = gameState.level
     }
@@ -121,10 +138,8 @@ fun TetrisGame(
     // Detect game over and save score
     LaunchedEffect(gameState.isGameOver) {
         if (gameState.isGameOver) {
-            if (isSoundEnabled) {
-                soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
-                hapticManager.onGameOver()
-            }
+            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
+            if (isHapticEnabled) hapticManager.onGameOver()
             // Save game result
             highScoreManager.saveGameResult(
                 score = gameState.score,
@@ -178,42 +193,33 @@ fun TetrisGame(
                                 when (gestureType) {
                                     GestureType.SWIPE_LEFT -> {
                                         gameState = engine.movePieceLeft(gameState)
-                                        if (isSoundEnabled) {
-                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                                            hapticManager.onMove()
-                                        }
+                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isHapticEnabled) hapticManager.onMove()
                                     }
                                     GestureType.SWIPE_RIGHT -> {
                                         gameState = engine.movePieceRight(gameState)
-                                        if (isSoundEnabled) {
-                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                                            hapticManager.onMove()
-                                        }
+                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isHapticEnabled) hapticManager.onMove()
                                     }
                                     GestureType.SWIPE_DOWN -> {
                                         gameState = engine.movePieceDown(gameState)
-                                        if (isSoundEnabled) {
-                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                                            hapticManager.onMove()
-                                        }
+                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isHapticEnabled) hapticManager.onMove()
                                     }
                                     GestureType.SWIPE_UP -> {
                                         gameState = engine.hardDrop(gameState)
-                                        if (isSoundEnabled) {
-                                            soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
-                                            hapticManager.onLock()
-                                        }
+                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                                        if (isHapticEnabled) hapticManager.onLock()
                                     }
                                     GestureType.TAP -> {
                                         gameState = engine.rotatePiece(gameState)
-                                        if (isSoundEnabled) {
-                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                                            hapticManager.onRotate()
-                                        }
+                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isHapticEnabled) hapticManager.onRotate()
                                     }
                                 }
                             }
-                        }
+                        },
+                        swipeThreshold = gestureSensitivity
                     )
             ) {
                 TetrisBoard(
@@ -228,46 +234,36 @@ fun TetrisGame(
                 onMoveLeft = {
                     if (!gameState.isPaused) {
                         gameState = engine.movePieceLeft(gameState)
-                        if (isSoundEnabled) {
-                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                            hapticManager.onMove()
-                        }
+                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                        if (isHapticEnabled) hapticManager.onMove()
                     }
                 },
                 onMoveRight = {
                     if (!gameState.isPaused) {
                         gameState = engine.movePieceRight(gameState)
-                        if (isSoundEnabled) {
-                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                            hapticManager.onMove()
-                        }
+                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                        if (isHapticEnabled) hapticManager.onMove()
                     }
                 },
                 onMoveDown = {
                     if (!gameState.isPaused) {
                         gameState = engine.movePieceDown(gameState)
-                        if (isSoundEnabled) {
-                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                            hapticManager.onMove()
-                        }
+                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                        if (isHapticEnabled) hapticManager.onMove()
                     }
                 },
                 onRotate = {
                     if (!gameState.isPaused) {
                         gameState = engine.rotatePiece(gameState)
-                        if (isSoundEnabled) {
-                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                            hapticManager.onRotate()
-                        }
+                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                        if (isHapticEnabled) hapticManager.onRotate()
                     }
                 },
                 onHardDrop = {
                     if (!gameState.isPaused) {
                         gameState = engine.hardDrop(gameState)
-                        if (isSoundEnabled) {
-                            soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
-                            hapticManager.onLock()
-                        }
+                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                        if (isHapticEnabled) hapticManager.onLock()
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
