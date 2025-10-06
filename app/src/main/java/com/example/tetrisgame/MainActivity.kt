@@ -8,11 +8,13 @@ import android.view.WindowInsetsController
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -24,6 +26,8 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import com.example.tetrisgame.ui.AchievementUnlockDialog
+import com.example.tetrisgame.ui.AchievementsScreen
 import com.example.tetrisgame.ui.HighScoresScreen
 import com.example.tetrisgame.ui.Screen
 import com.example.tetrisgame.ui.SettingsScreen
@@ -71,27 +75,63 @@ fun MainScreen() {
     val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
 
-    when (currentScreen) {
-        Screen.TETRIS_MENU -> TetrisMenuGame(
-            onStartGame = { currentScreen = Screen.TETRIS_GAME },
-            onHighScores = { currentScreen = Screen.HIGH_SCORES },
-            onSettings = { currentScreen = Screen.SETTINGS },
-            highScore = highScore
-        )
-        Screen.TETRIS_GAME -> TetrisGame(
-            onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
-            isSoundEnabled = isSfxEnabled,
-            isMusicEnabled = isMusicEnabled
-        )
+    // Achievement queue
+    var unlockedAchievements by remember { mutableStateOf<List<com.example.tetrisgame.data.Achievement>>(emptyList()) }
+    var showAchievementDialog by remember { mutableStateOf(false) }
+
+    // Show achievements when returning to menu
+    LaunchedEffect(currentScreen) {
+        if (currentScreen == Screen.TETRIS_MENU && unlockedAchievements.isNotEmpty()) {
+            showAchievementDialog = true
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (currentScreen) {
+            Screen.TETRIS_MENU -> TetrisMenuGame(
+                onStartGame = { currentScreen = Screen.TETRIS_GAME },
+                onHighScores = { currentScreen = Screen.HIGH_SCORES },
+                onSettings = { currentScreen = Screen.SETTINGS },
+                onAchievements = { currentScreen = Screen.ACHIEVEMENTS },
+                highScore = highScore,
+                newAchievementsCount = unlockedAchievements.size
+            )
+            Screen.TETRIS_GAME -> TetrisGame(
+                onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
+                isSoundEnabled = isSfxEnabled,
+                isMusicEnabled = isMusicEnabled,
+                onAchievementUnlocked = { achievement ->
+                    unlockedAchievements = unlockedAchievements + achievement
+                }
+            )
         Screen.HIGH_SCORES -> HighScoresScreen(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
         )
         Screen.SETTINGS -> SettingsScreen(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
         )
+        Screen.ACHIEVEMENTS -> AchievementsScreen(
+            onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
+        )
 
-        Screen.SHOOTER_MENU -> {}
-        Screen.SHOOTER_GAME -> {}
+            Screen.SHOOTER_MENU -> {}
+            Screen.SHOOTER_GAME -> {}
+        }
+
+        // Achievement unlock dialog (only show in menu)
+        if (showAchievementDialog && unlockedAchievements.isNotEmpty() && currentScreen == Screen.TETRIS_MENU) {
+            AchievementUnlockDialog(
+                achievement = unlockedAchievements.first(),
+                onDismiss = {
+                    if (unlockedAchievements.size > 1) {
+                        unlockedAchievements = unlockedAchievements.drop(1)
+                    } else {
+                        showAchievementDialog = false
+                        unlockedAchievements = emptyList()
+                    }
+                }
+            )
+        }
     }
 }
 

@@ -5,6 +5,7 @@ enum class Screen {
     TETRIS_GAME,
     HIGH_SCORES,
     SETTINGS,
+    ACHIEVEMENTS,
     SHOOTER_MENU,
     SHOOTER_GAME
 }

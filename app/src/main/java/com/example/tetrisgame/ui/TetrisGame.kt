@@ -41,7 +41,8 @@ object TetrisTheme {
 fun TetrisGame(
     onBackToMenu: () -> Unit,
     isSoundEnabled: Boolean = true,
-    isMusicEnabled: Boolean = true
+    isMusicEnabled: Boolean = true,
+    onAchievementUnlocked: (com.example.tetrisgame.data.Achievement) -> Unit = {}
 ) {
     var gameState by remember { mutableStateOf(TetrisGameState()) }
     val engine = remember { TetrisEngine() }
@@ -51,6 +52,22 @@ fun TetrisGame(
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
     var showGestureHint by remember { mutableStateOf(true) }
+
+    // Achievement tracking (only for game-over check)
+    var hardDropCount by remember { mutableStateOf(0) }
+    var rotationCount by remember { mutableStateOf(0) }
+    var piecesPlaced by remember { mutableStateOf(0) }
+    var gameStartTime by remember { mutableStateOf(System.currentTimeMillis()) }
+    var maxLinesClearedAtOnce by remember { mutableStateOf(0) }
+
+    // Helper function to reset achievement stats
+    fun resetAchievementStats() {
+        hardDropCount = 0
+        rotationCount = 0
+        piecesPlaced = 0
+        gameStartTime = System.currentTimeMillis()
+        maxLinesClearedAtOnce = 0
+    }
 
     // Settings Manager - read all settings
     val settingsManager = remember { com.example.tetrisgame.data.SettingsManager(context) }
@@ -66,6 +83,7 @@ fun TetrisGame(
     val shakeController = rememberShakeController()
     val highScoreManager = remember { com.example.tetrisgame.data.HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
+    val achievementManager = remember { com.example.tetrisgame.data.AchievementManager(context) }
 
     // Apply volume settings
     LaunchedEffect(sfxVolume) {
@@ -112,14 +130,19 @@ fun TetrisGame(
     LaunchedEffect(gameState.score) {
         if (gameState.score > previousScore) {
             val scoreIncrease = gameState.score - previousScore
+            val linesCleared = gameState.lastClearedLines.size
+
             if (scoreIncrease >= 1200) {
+                // Tetris = 4 lines cleared at once
+                maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, 4)
                 if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
                 if (isHapticEnabled) hapticManager.onTetris()
                 shakeController.shake(intensity = 20f, duration = 200)
             } else if (scoreIncrease > 0) {
+                // Track max lines cleared at once
+                maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, linesCleared)
                 if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
                 if (isHapticEnabled) hapticManager.onLineClear()
-                val linesCleared = gameState.lastClearedLines.size
                 shakeController.shake(intensity = 5f * linesCleared, duration = 100)
             }
         }
@@ -140,12 +163,33 @@ fun TetrisGame(
         if (gameState.isGameOver) {
             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
             if (isHapticEnabled) hapticManager.onGameOver()
+
             // Save game result
             highScoreManager.saveGameResult(
                 score = gameState.score,
                 lines = gameState.lines,
                 level = gameState.level
             )
+
+            // Check ALL achievements once at game over
+            val gameEndTime = System.currentTimeMillis()
+            val newAchievements = achievementManager.checkAchievements(
+                score = gameState.score,
+                level = gameState.level,
+                linesInGame = gameState.lines,
+                linesClearedAtOnce = maxLinesClearedAtOnce,
+                hardDropUsed = hardDropCount > 0,
+                rotationUsed = rotationCount > 0,
+                gameStartTime = gameStartTime,
+                gameEndTime = gameEndTime,
+                piecesPlaced = piecesPlaced
+            )
+            newAchievements.forEach { achievement ->
+                onAchievementUnlocked(achievement)
+            }
+
+            // Increment game count
+            achievementManager.incrementGameCount()
         }
     }
 
@@ -208,11 +252,14 @@ fun TetrisGame(
                                     }
                                     GestureType.SWIPE_UP -> {
                                         gameState = engine.hardDrop(gameState)
+                                        hardDropCount++
+                                        piecesPlaced++
                                         if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
                                         if (isHapticEnabled) hapticManager.onLock()
                                     }
                                     GestureType.TAP -> {
                                         gameState = engine.rotatePiece(gameState)
+                                        rotationCount++
                                         if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                                         if (isHapticEnabled) hapticManager.onRotate()
                                     }
@@ -255,6 +302,7 @@ fun TetrisGame(
                 onRotate = {
                     if (!gameState.isPaused) {
                         gameState = engine.rotatePiece(gameState)
+                        rotationCount++
                         if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                         if (isHapticEnabled) hapticManager.onRotate()
                     }
@@ -262,6 +310,8 @@ fun TetrisGame(
                 onHardDrop = {
                     if (!gameState.isPaused) {
                         gameState = engine.hardDrop(gameState)
+                        hardDropCount++
+                        piecesPlaced++
                         if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
                         if (isHapticEnabled) hapticManager.onLock()
                     }
@@ -276,6 +326,7 @@ fun TetrisGame(
             onRestart = {
                 gameState = engine.resetGame()
                 gameState = engine.spawnNewPiece(gameState)
+                resetAchievementStats()
             },
             onBackToMenu = onBackToMenu
         )
@@ -288,6 +339,7 @@ fun TetrisGame(
             onRestart = {
                 gameState = engine.resetGame()
                 gameState = engine.spawnNewPiece(gameState)
+                resetAchievementStats()
             },
             onBackToMenu = onBackToMenu
         )

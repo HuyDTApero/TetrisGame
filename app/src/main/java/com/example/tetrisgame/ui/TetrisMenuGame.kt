@@ -19,7 +19,9 @@ fun TetrisMenuGame(
     onStartGame: () -> Unit,
     onHighScores: () -> Unit,
     onSettings: () -> Unit,
-    highScore: Int = 0
+    onAchievements: () -> Unit,
+    highScore: Int = 0,
+    newAchievementsCount: Int = 0
 ) {
     Box(
         modifier = Modifier
@@ -70,6 +72,30 @@ fun TetrisMenuGame(
                 onClick = onHighScores,
                 backgroundColor = Color(0xFF4CAF50)
             )
+
+            Box {
+                MenuButton(
+                    text = "ACHIEVEMENTS",
+                    onClick = onAchievements,
+                    backgroundColor = Color(0xFFFFD700)
+                )
+
+                // Badge indicator for new achievements
+                if (newAchievementsCount > 0) {
+                    Badge(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = (-10).dp, y = 5.dp)
+                    ) {
+                        Text(
+                            text = newAchievementsCount.toString(),
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color.White
+                        )
+                    }
+                }
+            }
 
             MenuButton(
                 text = "SETTINGS",
