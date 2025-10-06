@@ -51,7 +51,7 @@ fun AchievementUnlockDialog(
 
     LaunchedEffect(Unit) {
         visible = true
-        delay(3000) // Show for 3 seconds
+        delay(2000)
         onDismiss()
     }
 
