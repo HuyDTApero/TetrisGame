@@ -50,6 +50,7 @@ fun TetrisGame(
 
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
+    var showGestureHint by remember { mutableStateOf(true) }
 
     val musicGenerator = remember { MusicGenerator() }
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
@@ -171,6 +172,49 @@ fun TetrisGame(
                         x = shakeController.getOffset().x.dp,
                         y = shakeController.getOffset().y.dp
                     )
+                    .swipeGestures(
+                        onGesture = { gestureType ->
+                            if (!gameState.isPaused && !gameState.isGameOver) {
+                                when (gestureType) {
+                                    GestureType.SWIPE_LEFT -> {
+                                        gameState = engine.movePieceLeft(gameState)
+                                        if (isSoundEnabled) {
+                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                            hapticManager.onMove()
+                                        }
+                                    }
+                                    GestureType.SWIPE_RIGHT -> {
+                                        gameState = engine.movePieceRight(gameState)
+                                        if (isSoundEnabled) {
+                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                            hapticManager.onMove()
+                                        }
+                                    }
+                                    GestureType.SWIPE_DOWN -> {
+                                        gameState = engine.movePieceDown(gameState)
+                                        if (isSoundEnabled) {
+                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                            hapticManager.onMove()
+                                        }
+                                    }
+                                    GestureType.SWIPE_UP -> {
+                                        gameState = engine.hardDrop(gameState)
+                                        if (isSoundEnabled) {
+                                            soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                                            hapticManager.onLock()
+                                        }
+                                    }
+                                    GestureType.TAP -> {
+                                        gameState = engine.rotatePiece(gameState)
+                                        if (isSoundEnabled) {
+                                            soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                            hapticManager.onRotate()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    )
             ) {
                 TetrisBoard(
                     gameState = gameState
@@ -251,6 +295,13 @@ fun TetrisGame(
             },
             onBackToMenu = onBackToMenu
         )
+
+        // Gesture hint overlay (show for first few seconds)
+        if (showGestureHint && !gameState.isGameOver) {
+            GestureHintOverlay(
+                onDismiss = { showGestureHint = false }
+            )
+        }
     }
 }
 
@@ -659,6 +710,88 @@ private fun PauseMenuButton(
             color = color,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold
+        )
+    }
+}
+
+@Composable
+private fun GestureHintOverlay(
+    onDismiss: () -> Unit
+) {
+    LaunchedEffect(Unit) {
+        delay(5000) // Auto-dismiss after 5 seconds
+        onDismiss()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(
+            modifier = Modifier.padding(24.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = TetrisTheme.CardBg.copy(alpha = 0.95f)
+            ),
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "👆 TOUCH CONTROLS",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TetrisTheme.NeonCyan
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                GestureHintItem("⬅️ Swipe Left", "Move left")
+                GestureHintItem("➡️ Swipe Right", "Move right")
+                GestureHintItem("⬇️ Swipe Down", "Soft drop")
+                GestureHintItem("⬆️ Swipe Up", "Hard drop")
+                GestureHintItem("👆 Tap", "Rotate")
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = TetrisTheme.NeonCyan.copy(alpha = 0.3f)
+                    ),
+                    shape = RoundedCornerShape(8.dp)
+                ) {
+                    Text(
+                        text = "GOT IT!",
+                        color = TetrisTheme.NeonCyan,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GestureHintItem(gesture: String, action: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = gesture,
+            fontSize = 16.sp,
+            color = Color.White
+        )
+        Text(
+            text = action,
+            fontSize = 14.sp,
+            color = TetrisTheme.NeonYellow
         )
     }
 }
