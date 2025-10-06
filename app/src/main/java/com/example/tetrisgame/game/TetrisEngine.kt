@@ -1,5 +1,7 @@
 package com.example.tetrisgame.game
 
+import com.example.tetrisgame.data.models.GameLevel
+import com.example.tetrisgame.data.models.LevelConfig
 import kotlin.random.Random
 
 class TetrisEngine {
@@ -10,7 +12,7 @@ class TetrisEngine {
 
         val newPiece = GamePiece(
             tetromino = currentPiece,
-            x = BOARD_WIDTH / 2 - 1,
+            x = gameState.board.width / 2 - 1,
             y = 0
         )
 
@@ -95,8 +97,8 @@ class TetrisEngine {
         val updatedGameState = gameState.copy(currentPiece = piece)
         val finalGameState = placePieceAndContinue(updatedGameState)
 
-        // Add bonus score for hard drop
-        val bonusScore = dropDistance * 2
+        // Add bonus score for hard drop (level-specific multiplier)
+        val bonusScore = dropDistance * 2 * gameState.levelConfig.hardDropMultiplier
         return finalGameState.copy(score = finalGameState.score + bonusScore)
     }
 
@@ -104,20 +106,32 @@ class TetrisEngine {
         val piece = gameState.currentPiece ?: return gameState
 
         // Place piece on board
-        val newBoard = gameState.board.placePiece(piece)
+        var newBoard = gameState.board.placePiece(piece)
 
         // Clear completed lines
         val (clearedBoard, linesCleared, clearedLineIndices) = newBoard.clearLines()
+
+        // Add obstacles for Challenge mode after clearing lines
+        val boardWithObstacles = if (gameState.levelConfig.hasObstacles && linesCleared > 0) {
+            val shouldAddObstacles = (gameState.lines + linesCleared) % gameState.levelConfig.obstacleFrequency == 0
+            if (shouldAddObstacles) {
+                clearedBoard.addRandomObstacles(2) // Add 2 random obstacles
+            } else {
+                clearedBoard
+            }
+        } else {
+            clearedBoard
+        }
 
         // Calculate score
         val lineScore = calculateLineScore(linesCleared, gameState.level)
         val newScore = gameState.score + lineScore
         val newLines = gameState.lines + linesCleared
-        val newLevel = calculateLevel(newLines)
+        val newLevel = calculateLevel(newLines, gameState.levelConfig.linesPerLevel)
 
         // Create new state without current piece
         val intermediateState = gameState.copy(
-            board = clearedBoard,
+            board = boardWithObstacles,
             currentPiece = null,
             score = newScore,
             lines = newLines,
@@ -144,8 +158,8 @@ class TetrisEngine {
         }
     }
 
-    private fun calculateLevel(totalLines: Int): Int {
-        return (totalLines / 10) + 1
+    private fun calculateLevel(totalLines: Int, linesPerLevel: Int): Int {
+        return (totalLines / linesPerLevel) + 1
     }
 
     private fun getWallKicks(fromRotation: Int, toRotation: Int): List<Pair<Int, Int>> {
@@ -163,8 +177,17 @@ class TetrisEngine {
         return gameState.copy(isPaused = !gameState.isPaused)
     }
 
-    fun resetGame(): TetrisGameState {
-        return TetrisGameState()
+    fun resetGame(gameLevel: GameLevel = GameLevel.CLASSIC): TetrisGameState {
+        val config = LevelConfig.getConfig(gameLevel)
+        return TetrisGameState(
+            board = GameBoard(
+                cells = List(config.boardHeight) { List(config.boardWidth) { null } },
+                width = config.boardWidth,
+                height = config.boardHeight
+            ),
+            gameLevel = gameLevel,
+            levelConfig = config
+        )
     }
 
     fun getGhostPiece(gameState: TetrisGameState): GamePiece? {

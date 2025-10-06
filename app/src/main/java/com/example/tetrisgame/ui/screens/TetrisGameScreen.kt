@@ -40,10 +40,12 @@ fun TetrisGame(
     onBackToMenu: () -> Unit,
     isSoundEnabled: Boolean = true,
     isMusicEnabled: Boolean = true,
-    onAchievementUnlocked: (com.example.tetrisgame.data.models.Achievement) -> Unit = {}
+    gameLevel: com.example.tetrisgame.data.models.GameLevel = com.example.tetrisgame.data.models.GameLevel.CLASSIC,
+    onAchievementUnlocked: (com.example.tetrisgame.data.models.Achievement) -> Unit = {},
+    onLevelComplete: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {}
 ) {
-    var gameState by remember { mutableStateOf(TetrisGameState()) }
     val engine = remember { TetrisEngine() }
+    var gameState by remember { mutableStateOf(engine.resetGame(gameLevel)) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -82,6 +84,7 @@ fun TetrisGame(
     val highScoreManager = remember { com.example.tetrisgame.data.managers.HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
     val achievementManager = remember { com.example.tetrisgame.data.managers.AchievementManager(context) }
+    val progressManager = remember { com.example.tetrisgame.data.managers.ProgressManager(context) }
 
     // Apply volume settings
     LaunchedEffect(sfxVolume) {
@@ -169,6 +172,34 @@ fun TetrisGame(
                 level = gameState.level
             )
 
+            // Save progress for this level
+            val playTime = System.currentTimeMillis() - gameStartTime
+            progressManager.updateGameResult(
+                level = gameLevel,
+                score = gameState.score,
+                lines = gameState.lines,
+                playTime = playTime
+            )
+
+            // Check if level should be unlocked (based on score or lines)
+            val shouldUnlockNext = when (gameLevel) {
+                com.example.tetrisgame.data.models.GameLevel.CLASSIC -> gameState.score >= 1000 || gameState.lines >= 10
+                com.example.tetrisgame.data.models.GameLevel.SPEED -> gameState.score >= 2000 || gameState.lines >= 20
+                com.example.tetrisgame.data.models.GameLevel.CHALLENGE -> false // Max level
+            }
+
+            if (shouldUnlockNext) {
+                val nextLevel = when (gameLevel) {
+                    com.example.tetrisgame.data.models.GameLevel.CLASSIC -> com.example.tetrisgame.data.models.GameLevel.SPEED
+                    com.example.tetrisgame.data.models.GameLevel.SPEED -> com.example.tetrisgame.data.models.GameLevel.CHALLENGE
+                    com.example.tetrisgame.data.models.GameLevel.CHALLENGE -> null
+                }
+                nextLevel?.let {
+                    progressManager.unlockLevel(it)
+                    onLevelComplete(it)
+                }
+            }
+
             // Check ALL achievements once at game over
             val gameEndTime = System.currentTimeMillis()
             val newAchievements = achievementManager.checkAchievements(
@@ -199,7 +230,10 @@ fun TetrisGame(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        AnimatedBackground(modifier = Modifier.fillMaxSize())
+        AnimatedBackground(
+            modifier = Modifier.fillMaxSize(),
+            theme = gameState.levelConfig.theme
+        )
 
         Column(
             modifier = Modifier
@@ -322,7 +356,7 @@ fun TetrisGame(
             gameState = gameState,
             highScore = highScore,
             onRestart = {
-                gameState = engine.resetGame()
+                gameState = engine.resetGame(gameLevel)
                 gameState = engine.spawnNewPiece(gameState)
                 resetAchievementStats()
             },
@@ -335,7 +369,7 @@ fun TetrisGame(
                 gameState = engine.togglePause(gameState)
             },
             onRestart = {
-                gameState = engine.resetGame()
+                gameState = engine.resetGame(gameLevel)
                 gameState = engine.spawnNewPiece(gameState)
                 resetAchievementStats()
             },

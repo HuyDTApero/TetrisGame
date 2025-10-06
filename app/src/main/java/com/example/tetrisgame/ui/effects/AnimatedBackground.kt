@@ -92,12 +92,14 @@ data class AnimationState(
 
 @Composable
 fun AnimatedBackground(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    theme: com.example.tetrisgame.data.models.LevelTheme? = null
 ) {
     val animationState = rememberAnimationState()
 
     Canvas(modifier = modifier) {
         drawAnimatedBackground(
+            theme = theme,
             time = animationState.time,
             matrixDrops = animationState.matrixDrops,
             particles = animationState.particles
@@ -108,64 +110,93 @@ fun AnimatedBackground(
 private fun DrawScope.drawAnimatedBackground(
     time: Float,
     matrixDrops: List<MatrixDrop>,
-    particles: List<Particle>
+    particles: List<Particle>,
+    theme: com.example.tetrisgame.data.models.LevelTheme? = null
 ) {
     val width = size.width
     val height = size.height
 
     val angle = (sin(time * 0.5f) + 1f) / 2f
-    drawRect(
-        brush = Brush.verticalGradient(
-            colors = listOf(
-                Color(0xFF000211),
-                Color(0xFF00212A).copy(alpha = 0.85f + 0.1f * angle),
-                Color(0xFF0D233A).copy(alpha = 0.8f * (1f - angle) + 0.6f * angle)
+
+    // Background based on theme
+    if (theme?.showGradient == true) {
+        // Gradient background for Speed mode
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    theme.backgroundColor,
+                    theme.primaryColor.copy(alpha = 0.3f * angle),
+                    theme.secondaryColor.copy(alpha = 0.2f * (1f - angle))
+                ),
+                startY = 0f,
+                endY = height
             ),
-            startY = 0f,
-            endY = height
-        ),
-        size = size
-    )
-
-    particles.forEach { particle ->
-        val pulseFactor = (sin(time * 2f + particle.x * 0.01f) + 1f) / 2f
-        drawCircle(
-            color = Color.Cyan.copy(alpha = (0.15f * particle.alpha + 0.05f) * pulseFactor),
-            center = Offset(particle.x % width, particle.y % height),
-            radius = particle.size * (3f + pulseFactor * 2f)
+            size = size
         )
-
-        // Add inner glow
-        drawCircle(
-            color = Color.White.copy(alpha = 0.08f * particle.alpha * pulseFactor),
-            center = Offset(particle.x % width, particle.y % height),
-            radius = particle.size * 1.5f
+    } else {
+        // Default dark background
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(
+                    theme?.backgroundColor ?: Color(0xFF000211),
+                    (theme?.backgroundColor ?: Color(0xFF00212A)).copy(alpha = 0.85f + 0.1f * angle),
+                    (theme?.backgroundColor ?: Color(0xFF0D233A)).copy(alpha = 0.8f * (1f - angle) + 0.6f * angle)
+                ),
+                startY = 0f,
+                endY = height
+            ),
+            size = size
         )
     }
 
-    matrixDrops.forEach { drop ->
-        val dropAlpha = (drop.alpha * 0.6f + 0.15f).coerceIn(0f, 1f)
-        val dropWidth = 8f
-        val dropHeight = 12f
+    // Particles if enabled
+    if (theme == null || theme.showParticles) {
+        particles.forEach { particle ->
+            val pulseFactor = (sin(time * 2f + particle.x * 0.01f) + 1f) / 2f
+            val particleColor = theme?.primaryColor ?: Color.Cyan
+            drawCircle(
+                color = particleColor.copy(alpha = (0.15f * particle.alpha + 0.05f) * pulseFactor),
+                center = Offset(particle.x % width, particle.y % height),
+                radius = particle.size * (3f + pulseFactor * 2f)
+            )
 
-        drawRect(
-            color = Color.Green.copy(alpha = dropAlpha),
-            topLeft = Offset((drop.x % width) - dropWidth / 2, (drop.y % height) - dropHeight / 2),
-            size = Size(dropWidth, dropHeight)
-        )
-
-        drawRect(
-            color = Color.Green.copy(alpha = dropAlpha * 0.3f),
-            topLeft = Offset((drop.x % width) - dropWidth, (drop.y % height) - dropHeight),
-            size = Size(dropWidth * 2, dropHeight * 2)
-        )
+            // Add inner glow
+            drawCircle(
+                color = Color.White.copy(alpha = 0.08f * particle.alpha * pulseFactor),
+                center = Offset(particle.x % width, particle.y % height),
+                radius = particle.size * 1.5f
+            )
+        }
     }
 
-    // Add subtle grid overlay that pulses
+    // Matrix rain if enabled
+    if (theme?.showMatrixRain == true) {
+        matrixDrops.forEach { drop ->
+            val dropAlpha = (drop.alpha * 0.6f + 0.15f).coerceIn(0f, 1f)
+            val dropWidth = 8f
+            val dropHeight = 12f
+            val matrixColor = theme.primaryColor
+
+            drawRect(
+                color = matrixColor.copy(alpha = dropAlpha),
+                topLeft = Offset((drop.x % width) - dropWidth / 2, (drop.y % height) - dropHeight / 2),
+                size = Size(dropWidth, dropHeight)
+            )
+
+            drawRect(
+                color = matrixColor.copy(alpha = dropAlpha * 0.3f),
+                topLeft = Offset((drop.x % width) - dropWidth, (drop.y % height) - dropHeight),
+                size = Size(dropWidth * 2, dropHeight * 2)
+            )
+        }
+    }
+
+    // Add subtle grid overlay that pulses (always shown but subtle)
     val gridAlpha = (sin(time * 1.2f) + 1f) / 2f * 0.05f
+    val gridColor = theme?.primaryColor ?: Color.Cyan
     for (i in 0 until width.toInt() step 40) {
         drawLine(
-            color = Color.Cyan.copy(alpha = gridAlpha),
+            color = gridColor.copy(alpha = gridAlpha),
             start = Offset(i.toFloat(), 0f),
             end = Offset(i.toFloat(), height),
             strokeWidth = 1f
@@ -173,7 +204,7 @@ private fun DrawScope.drawAnimatedBackground(
     }
     for (i in 0 until height.toInt() step 40) {
         drawLine(
-            color = Color.Cyan.copy(alpha = gridAlpha),
+            color = gridColor.copy(alpha = gridAlpha),
             start = Offset(0f, i.toFloat()),
             end = Offset(width, i.toFloat()),
             strokeWidth = 1f

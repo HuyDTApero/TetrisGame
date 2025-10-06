@@ -1,8 +1,10 @@
 package com.example.tetrisgame.game
 
 import androidx.compose.ui.graphics.Color
+import com.example.tetrisgame.data.models.GameLevel
+import com.example.tetrisgame.data.models.LevelConfig
 
-// Tetris game board dimensions
+// Tetris game board dimensions (default - can be overridden by level config)
 const val BOARD_WIDTH = 10
 const val BOARD_HEIGHT = 20
 
@@ -119,7 +121,9 @@ data class GamePiece(
 
 // Game board state
 data class GameBoard(
-    val cells: List<List<Color?>> = List(BOARD_HEIGHT) { List(BOARD_WIDTH) { null } }
+    val cells: List<List<Color?>> = List(BOARD_HEIGHT) { List(BOARD_WIDTH) { null } },
+    val width: Int = BOARD_WIDTH,
+    val height: Int = BOARD_HEIGHT
 ) {
     fun isValidPosition(piece: GamePiece): Boolean {
         val shape = piece.getRotatedShape()
@@ -130,8 +134,8 @@ data class GameBoard(
                     val boardY = piece.y + row
 
                     // Check boundaries
-                    if (boardX < 0 || boardX >= BOARD_WIDTH ||
-                        boardY < 0 || boardY >= BOARD_HEIGHT
+                    if (boardX < 0 || boardX >= width ||
+                        boardY < 0 || boardY >= height
                     ) {
                         return false
                     }
@@ -155,8 +159,8 @@ data class GameBoard(
                 if (shape[row][col]) {
                     val boardX = piece.x + col
                     val boardY = piece.y + row
-                    if (boardY >= 0 && boardY < BOARD_HEIGHT &&
-                        boardX >= 0 && boardX < BOARD_WIDTH
+                    if (boardY >= 0 && boardY < height &&
+                        boardX >= 0 && boardX < width
                     ) {
                         newCells[boardY][boardX] = piece.tetromino.color
                     }
@@ -164,7 +168,7 @@ data class GameBoard(
             }
         }
 
-        return GameBoard(newCells)
+        return GameBoard(newCells, width, height)
     }
 
     fun clearLines(): Triple<GameBoard, Int, List<Int>> {
@@ -182,10 +186,31 @@ data class GameBoard(
         }
 
         repeat(clearedLines) {
-            newCells.add(0, List(BOARD_WIDTH) { null })
+            newCells.add(0, List(width) { null })
         }
 
-        return Triple(GameBoard(newCells), clearedLines, clearedLineIndices)
+        return Triple(GameBoard(newCells, width, height), clearedLines, clearedLineIndices)
+    }
+
+    fun addObstacle(row: Int, col: Int): GameBoard {
+        val newCells = cells.map { it.toMutableList() }.toMutableList()
+        if (row in 0 until height && col in 0 until width) {
+            newCells[row][col] = Color.DarkGray // Obstacle color
+        }
+        return GameBoard(newCells, width, height)
+    }
+
+    fun addRandomObstacles(count: Int): GameBoard {
+        var board = this
+        repeat(count) {
+            // Add obstacle in bottom half of board
+            val row = (height / 2 until height).random()
+            val col = (0 until width).random()
+            if (board.cells[row][col] == null) {
+                board = board.addObstacle(row, col)
+            }
+        }
+        return board
     }
 }
 
@@ -198,9 +223,14 @@ data class TetrisGameState(
     val lines: Int = 0,
     val isGameOver: Boolean = false,
     val isPaused: Boolean = false,
-    val lastClearedLines: List<Int> = emptyList() // For animations
+    val lastClearedLines: List<Int> = emptyList(), // For animations
+    val gameLevel: GameLevel = GameLevel.CLASSIC,
+    val levelConfig: LevelConfig = LevelConfig.getConfig(GameLevel.CLASSIC)
 ) {
     fun calculateDropSpeed(): Long {
-        return maxOf(50, 1000 - (level - 1) * 100).toLong()
+        val baseSpeed = levelConfig.initialSpeed
+        val speedDecrement = levelConfig.speedDecrement
+        val minSpeed = levelConfig.minSpeed
+        return maxOf(minSpeed, baseSpeed - (level - 1) * speedDecrement)
     }
 }

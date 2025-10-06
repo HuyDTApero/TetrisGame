@@ -28,11 +28,14 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tetrisgame.data.managers.SettingsManager
 import com.example.tetrisgame.data.managers.HighScoreManager
+import com.example.tetrisgame.data.managers.ProgressManager
 import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.data.models.GameLevel
 import com.example.tetrisgame.ui.components.dialogs.AchievementUnlockDialog
 import com.example.tetrisgame.ui.navigation.Screen
 import com.example.tetrisgame.ui.screens.AchievementsScreen
 import com.example.tetrisgame.ui.screens.HighScoresScreen
+import com.example.tetrisgame.ui.screens.LevelSelectScreen
 import com.example.tetrisgame.ui.screens.SettingsScreen
 import com.example.tetrisgame.ui.screens.TetrisGame
 import com.example.tetrisgame.ui.screens.TetrisMenuGame
@@ -67,6 +70,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
+    var selectedGameLevel by remember { mutableStateOf(GameLevel.CLASSIC) }
     val context = LocalContext.current
 
     // Settings manager
@@ -77,6 +81,9 @@ fun MainScreen() {
     // High score manager
     val highScoreManager = remember { HighScoreManager(context) }
     val highScore by highScoreManager.highScore.collectAsState(initial = 0)
+
+    // Progress manager
+    val progressManager = remember { ProgressManager(context) }
 
     // Achievement queue
     var unlockedAchievements by remember { mutableStateOf<List<Achievement>>(emptyList()) }
@@ -92,17 +99,25 @@ fun MainScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             Screen.TETRIS_MENU -> TetrisMenuGame(
-                onStartGame = { currentScreen = Screen.TETRIS_GAME },
+                onStartGame = { currentScreen = Screen.LEVEL_SELECT },
                 onHighScores = { currentScreen = Screen.HIGH_SCORES },
                 onSettings = { currentScreen = Screen.SETTINGS },
                 onAchievements = { currentScreen = Screen.ACHIEVEMENTS },
                 highScore = highScore,
                 newAchievementsCount = unlockedAchievements.size
             )
+            Screen.LEVEL_SELECT -> LevelSelectScreen(
+                onLevelSelected = { level ->
+                    selectedGameLevel = level
+                    currentScreen = Screen.TETRIS_GAME
+                },
+                onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
+            )
             Screen.TETRIS_GAME -> TetrisGame(
                 onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
                 isSoundEnabled = isSfxEnabled,
                 isMusicEnabled = isMusicEnabled,
+                gameLevel = selectedGameLevel,
                 onAchievementUnlocked = { achievement ->
                     unlockedAchievements = unlockedAchievements + achievement
                 }
