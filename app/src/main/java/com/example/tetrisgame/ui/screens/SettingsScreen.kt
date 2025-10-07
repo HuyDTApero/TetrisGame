@@ -41,7 +41,6 @@ fun SettingsScreen(
 
     // AI Assistant settings
     val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
-    val aiHintLevel by settingsManager.aiHintLevel.collectAsState(initial = com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE)
 
     Box(
         modifier = Modifier
@@ -115,35 +114,6 @@ fun SettingsScreen(
                                     }
                                 }
                             )
-
-                            if (isAIAssistantEnabled) {
-                                Divider(color = Color.Gray.copy(alpha = 0.3f))
-
-                                // Hint Level Selection
-                                Text(
-                                    text = "Hint Level",
-                                    fontSize = 16.sp,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Medium
-                                )
-
-                                // Only show relevant hint levels (skip NONE)
-                                listOf(
-                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.MINIMAL,
-                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE,
-                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.DETAILED
-                                ).forEach { level ->
-                                    HintLevelOption(
-                                        level = level,
-                                        isSelected = aiHintLevel == level,
-                                        onSelect = {
-                                            coroutineScope.launch {
-                                                settingsManager.setAIHintLevel(level)
-                                            }
-                                        }
-                                    )
-                                }
-                            }
                         }
                     }
                 }
@@ -322,52 +292,6 @@ fun SettingsScreen(
     }
 }
 
-@Composable
-private fun HintLevelOption(
-    level: com.example.tetrisgame.ai.TetrisAI.HintLevel,
-    isSelected: Boolean,
-    onSelect: () -> Unit
-) {
-    val (levelText, levelDesc) = when (level) {
-        com.example.tetrisgame.ai.TetrisAI.HintLevel.MINIMAL -> "Minimal" to "Simple confirmations"
-        com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE -> "Moderate" to "Helpful hints"
-        com.example.tetrisgame.ai.TetrisAI.HintLevel.DETAILED -> "Detailed" to "Full explanations"
-        com.example.tetrisgame.ai.TetrisAI.HintLevel.NONE -> "None" to "No hints"
-    }
-
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { onSelect() }
-            .border(
-                width = if (isSelected) 2.dp else 0.dp,
-                color = Color(0xFF00FF41),
-                shape = RoundedCornerShape(8.dp)
-            ),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected)
-                Color(0xFF00FF41).copy(alpha = 0.15f)
-            else
-                Color(0xFF2A2A3E).copy(alpha = 0.3f)
-        ),
-        shape = RoundedCornerShape(8.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "$levelText - $levelDesc",
-                fontSize = 14.sp,
-                color = if (isSelected) Color(0xFF00FF41) else Color.White,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
-        }
-    }
-}
 
 @Composable
 private fun SettingsSectionHeader(text: String) {

@@ -1,43 +1,54 @@
 package com.example.tetrisgame.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.offset
-import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Star
+import com.example.tetrisgame.ai.AIAssistant
+import com.example.tetrisgame.ai.TetrisAI
 import com.example.tetrisgame.audio.EnhancedSoundManager
 import com.example.tetrisgame.audio.MusicGenerator
 import com.example.tetrisgame.game.TetrisEngine
 import com.example.tetrisgame.game.TetrisGameState
-import com.example.tetrisgame.ui.components.header.CompactGameHeader
-import com.example.tetrisgame.ui.components.controls.TetrisStyledControls
-import com.example.tetrisgame.ui.components.dialogs.PauseMenuDialog
-import com.example.tetrisgame.ui.components.dialogs.GestureHintOverlay
-import com.example.tetrisgame.ui.theme.TetrisTheme
+import com.example.tetrisgame.input.GestureType
 import com.example.tetrisgame.input.HapticFeedbackManager
 import com.example.tetrisgame.input.swipeGestures
-import com.example.tetrisgame.input.GestureType
-import com.example.tetrisgame.ui.effects.rememberShakeController
-import com.example.tetrisgame.ui.effects.AnimatedBackground
-import com.example.tetrisgame.ui.TetrisBoard
 import com.example.tetrisgame.ui.GameOverDialog
-import com.example.tetrisgame.ai.AIAssistant
-import com.example.tetrisgame.ai.TetrisAI
+import com.example.tetrisgame.ui.TetrisBoard
+import com.example.tetrisgame.ui.components.controls.TetrisStyledControls
+import com.example.tetrisgame.ui.components.dialogs.GestureHintOverlay
+import com.example.tetrisgame.ui.components.dialogs.PauseMenuDialog
+import com.example.tetrisgame.ui.components.header.CompactGameHeader
+import com.example.tetrisgame.ui.effects.AnimatedBackground
+import com.example.tetrisgame.ui.effects.rememberShakeController
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun TetrisGame(
@@ -74,7 +85,6 @@ fun TetrisGame(
     val tetrisAI = remember { TetrisAI() }
     val aiAssistant = remember { AIAssistant(tetrisAI) }
     val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
-    val aiHintLevel by settingsManager.aiHintLevel.collectAsState(initial = TetrisAI.HintLevel.MODERATE)
     var aiHint by remember { mutableStateOf<String?>(null) }
     var showAIHintOverlay by remember { mutableStateOf(false) }
 
@@ -365,7 +375,6 @@ fun TetrisGame(
                     aiAssistant.AIHintOverlay(
                         gameState = gameState,
                         showHints = true,
-                        hintLevel = aiHintLevel,
                         modifier = Modifier.matchParentSize()
                     )
                 }

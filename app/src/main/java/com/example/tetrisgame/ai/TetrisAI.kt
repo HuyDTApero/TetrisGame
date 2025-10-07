@@ -240,23 +240,4 @@ class TetrisAI {
         }
     }
 
-    /**
-     * Get difficulty-appropriate hint level
-     */
-    fun getHintLevel(skillLevel: SkillLevel): HintLevel {
-        return when (skillLevel) {
-            SkillLevel.BEGINNER -> HintLevel.DETAILED
-            SkillLevel.INTERMEDIATE -> HintLevel.MODERATE
-            SkillLevel.ADVANCED -> HintLevel.MINIMAL
-            SkillLevel.EXPERT -> HintLevel.NONE
-        }
-    }
-
-    enum class SkillLevel {
-        BEGINNER, INTERMEDIATE, ADVANCED, EXPERT
-    }
-
-    enum class HintLevel {
-        NONE, MINIMAL, MODERATE, DETAILED
-    }
 }

@@ -38,7 +38,6 @@ class SettingsManager(private val context: Context) {
 
         // AI Assistant settings
         private val AI_ASSISTANT_ENABLED_KEY = booleanPreferencesKey("ai_assistant_enabled")
-        private val AI_HINT_LEVEL_KEY = stringPreferencesKey("ai_hint_level")
     }
 
     // Audio settings
@@ -83,16 +82,6 @@ class SettingsManager(private val context: Context) {
         preferences[AI_ASSISTANT_ENABLED_KEY] ?: false
     }
 
-    val aiHintLevel: Flow<com.example.tetrisgame.ai.TetrisAI.HintLevel> =
-        context.dataStore.data.map { preferences ->
-            val levelName = preferences[AI_HINT_LEVEL_KEY]
-                ?: com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE.name
-            try {
-                com.example.tetrisgame.ai.TetrisAI.HintLevel.valueOf(levelName)
-            } catch (e: Exception) {
-                com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE
-            }
-        }
 
     // Update functions
     suspend fun setSfxEnabled(enabled: Boolean) {
@@ -143,11 +132,6 @@ class SettingsManager(private val context: Context) {
         }
     }
 
-    suspend fun setAIHintLevel(level: com.example.tetrisgame.ai.TetrisAI.HintLevel) {
-        context.dataStore.edit { preferences ->
-            preferences[AI_HINT_LEVEL_KEY] = level.name
-        }
-    }
 
     suspend fun resetToDefaults() {
         context.dataStore.edit { preferences ->
