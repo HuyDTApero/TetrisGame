@@ -35,6 +35,9 @@ class SettingsManager(private val context: Context) {
 
         // Theme settings
         private val THEME_KEY = stringPreferencesKey("theme")
+
+        // AI Assistant settings
+        private val AI_ASSISTANT_ENABLED_KEY = booleanPreferencesKey("ai_assistant_enabled")
     }
 
     // Audio settings
@@ -73,6 +76,12 @@ class SettingsManager(private val context: Context) {
             GameTheme.NEON
         }
     }
+
+    // AI Assistant settings
+    val isAIAssistantEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AI_ASSISTANT_ENABLED_KEY] ?: false
+    }
+
 
     // Update functions
     suspend fun setSfxEnabled(enabled: Boolean) {
@@ -116,6 +125,13 @@ class SettingsManager(private val context: Context) {
             preferences[THEME_KEY] = theme.name
         }
     }
+
+    suspend fun setAIAssistantEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AI_ASSISTANT_ENABLED_KEY] = enabled
+        }
+    }
+
 
     suspend fun resetToDefaults() {
         context.dataStore.edit { preferences ->

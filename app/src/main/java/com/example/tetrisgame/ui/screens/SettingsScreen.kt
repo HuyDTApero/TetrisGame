@@ -39,6 +39,9 @@ fun SettingsScreen(
     val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
     val currentTheme by settingsManager.theme.collectAsState(initial = GameTheme.NEON)
 
+    // AI Assistant settings
+    val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -90,6 +93,31 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // AI Assistant Section
+                item {
+                    SettingsSectionHeader("🤖 AI ASSISTANT")
+                }
+
+                item {
+                    SettingsCard {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // AI Assistant Toggle
+                            SettingsToggle(
+                                label = "Enable AI Assistant",
+                                checked = isAIAssistantEnabled,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        settingsManager.setAIAssistantEnabled(it)
+                                    }
+                                }
+                            )
+                        }
+                    }
+                }
+
                 // Audio Section
                 item {
                     SettingsSectionHeader("🔊 AUDIO")
@@ -156,30 +184,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // Haptic Section
-                item {
-                    SettingsSectionHeader("📳 HAPTIC FEEDBACK")
-                }
-
-                item {
-                    SettingsCard {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            SettingsToggle(
-                                label = "Vibration",
-                                checked = isHapticEnabled,
-                                onCheckedChange = {
-                                    coroutineScope.launch {
-                                        settingsManager.setHapticEnabled(it)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-
                 // Controls Section
                 item {
                     SettingsSectionHeader("🎮 CONTROLS")
@@ -203,6 +207,30 @@ fun SettingsScreen(
                                     gestureSensitivity < 40f -> "Low"
                                     gestureSensitivity < 70f -> "Medium"
                                     else -> "High"
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Haptic Section
+                item {
+                    SettingsSectionHeader("📳 HAPTIC FEEDBACK")
+                }
+
+                item {
+                    SettingsCard {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SettingsToggle(
+                                label = "Vibration",
+                                checked = isHapticEnabled,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        settingsManager.setHapticEnabled(it)
+                                    }
                                 }
                             )
                         }
@@ -263,6 +291,7 @@ fun SettingsScreen(
         }
     }
 }
+
 
 @Composable
 private fun SettingsSectionHeader(text: String) {

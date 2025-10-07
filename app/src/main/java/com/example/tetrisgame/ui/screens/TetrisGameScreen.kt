@@ -1,39 +1,54 @@
 package com.example.tetrisgame.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.layout.offset
+import com.example.tetrisgame.ai.AIAssistant
+import com.example.tetrisgame.ai.TetrisAI
 import com.example.tetrisgame.audio.EnhancedSoundManager
 import com.example.tetrisgame.audio.MusicGenerator
 import com.example.tetrisgame.game.TetrisEngine
 import com.example.tetrisgame.game.TetrisGameState
-import com.example.tetrisgame.ui.components.header.CompactGameHeader
-import com.example.tetrisgame.ui.components.controls.TetrisStyledControls
-import com.example.tetrisgame.ui.components.dialogs.PauseMenuDialog
-import com.example.tetrisgame.ui.components.dialogs.GestureHintOverlay
-import com.example.tetrisgame.ui.theme.TetrisTheme
+import com.example.tetrisgame.input.GestureType
 import com.example.tetrisgame.input.HapticFeedbackManager
 import com.example.tetrisgame.input.swipeGestures
-import com.example.tetrisgame.input.GestureType
-import com.example.tetrisgame.ui.effects.rememberShakeController
-import com.example.tetrisgame.ui.effects.AnimatedBackground
-import com.example.tetrisgame.ui.TetrisBoard
 import com.example.tetrisgame.ui.GameOverDialog
+import com.example.tetrisgame.ui.TetrisBoard
+import com.example.tetrisgame.ui.components.controls.TetrisStyledControls
+import com.example.tetrisgame.ui.components.dialogs.GestureHintOverlay
+import com.example.tetrisgame.ui.components.dialogs.PauseMenuDialog
+import com.example.tetrisgame.ui.components.header.CompactGameHeader
+import com.example.tetrisgame.ui.effects.AnimatedBackground
+import com.example.tetrisgame.ui.effects.rememberShakeController
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 @Composable
 fun TetrisGame(
@@ -48,6 +63,30 @@ fun TetrisGame(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val modeConfig = remember { com.example.tetrisgame.data.models.GameModeConfig.getConfig(gameMode) }
+
+    // Settings Manager - read all settings
+    val settingsManager = remember { com.example.tetrisgame.data.managers.SettingsManager(context) }
+    val sfxVolume by settingsManager.sfxVolume.collectAsState(initial = 0.7f)
+    val musicVolume by settingsManager.musicVolume.collectAsState(initial = 0.5f)
+    val isHapticEnabled by settingsManager.isHapticEnabled.collectAsState(initial = true)
+    val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
+    val currentTheme by settingsManager.theme.collectAsState(initial = com.example.tetrisgame.data.models.GameTheme.NEON)
+    val musicGenerator = remember { MusicGenerator() }
+    val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
+    val hapticManager = remember { HapticFeedbackManager(context) }
+    val shakeController = rememberShakeController()
+    val highScoreManager =
+        remember { com.example.tetrisgame.data.managers.HighScoreManager(context) }
+    val highScore by highScoreManager.highScore.collectAsState(initial = 0)
+    val achievementManager =
+        remember { com.example.tetrisgame.data.managers.AchievementManager(context) }
+
+    // AI Assistant integration
+    val tetrisAI = remember { TetrisAI() }
+    val aiAssistant = remember { AIAssistant(tetrisAI) }
+    val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
+    var aiHint by remember { mutableStateOf<String?>(null) }
+    var showAIHintOverlay by remember { mutableStateOf(false) }
 
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
@@ -68,22 +107,6 @@ fun TetrisGame(
         gameStartTime = System.currentTimeMillis()
         maxLinesClearedAtOnce = 0
     }
-
-    // Settings Manager - read all settings
-    val settingsManager = remember { com.example.tetrisgame.data.managers.SettingsManager(context) }
-    val sfxVolume by settingsManager.sfxVolume.collectAsState(initial = 0.7f)
-    val musicVolume by settingsManager.musicVolume.collectAsState(initial = 0.5f)
-    val isHapticEnabled by settingsManager.isHapticEnabled.collectAsState(initial = true)
-    val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
-    val currentTheme by settingsManager.theme.collectAsState(initial = com.example.tetrisgame.data.models.GameTheme.NEON)
-
-    val musicGenerator = remember { MusicGenerator() }
-    val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
-    val hapticManager = remember { HapticFeedbackManager(context) }
-    val shakeController = rememberShakeController()
-    val highScoreManager = remember { com.example.tetrisgame.data.managers.HighScoreManager(context) }
-    val highScore by highScoreManager.highScore.collectAsState(initial = 0)
-    val achievementManager = remember { com.example.tetrisgame.data.managers.AchievementManager(context) }
 
     // Apply volume settings
     LaunchedEffect(sfxVolume) {
@@ -269,6 +292,7 @@ fun TetrisGame(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+
             // Compact Header with Score and Next Piece (Side by Side)
             CompactGameHeader(
                 gameState = gameState,
@@ -296,30 +320,44 @@ fun TetrisGame(
                                 when (gestureType) {
                                     GestureType.SWIPE_LEFT -> {
                                         gameState = engine.movePieceLeft(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isSoundEnabled) soundManager.playSound(
+                                            EnhancedSoundManager.SoundType.MOVE
+                                        )
                                         if (isHapticEnabled) hapticManager.onMove()
                                     }
+
                                     GestureType.SWIPE_RIGHT -> {
                                         gameState = engine.movePieceRight(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isSoundEnabled) soundManager.playSound(
+                                            EnhancedSoundManager.SoundType.MOVE
+                                        )
                                         if (isHapticEnabled) hapticManager.onMove()
                                     }
+
                                     GestureType.SWIPE_DOWN -> {
                                         gameState = engine.movePieceDown(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isSoundEnabled) soundManager.playSound(
+                                            EnhancedSoundManager.SoundType.MOVE
+                                        )
                                         if (isHapticEnabled) hapticManager.onMove()
                                     }
+
                                     GestureType.SWIPE_UP -> {
                                         gameState = engine.hardDrop(gameState)
                                         hardDropCount++
                                         piecesPlaced++
-                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                                        if (isSoundEnabled) soundManager.playSound(
+                                            EnhancedSoundManager.SoundType.LOCK
+                                        )
                                         if (isHapticEnabled) hapticManager.onLock()
                                     }
+
                                     GestureType.TAP -> {
                                         gameState = engine.rotatePiece(gameState)
                                         rotationCount++
-                                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                                        if (isSoundEnabled) soundManager.playSound(
+                                            EnhancedSoundManager.SoundType.MOVE
+                                        )
                                         if (isHapticEnabled) hapticManager.onRotate()
                                     }
                                 }
@@ -331,6 +369,15 @@ fun TetrisGame(
                 TetrisBoard(
                     gameState = gameState
                 )
+
+                // AI Visual Hint Overlay
+                if (isAIAssistantEnabled && !gameState.isPaused && !gameState.isGameOver) {
+                    aiAssistant.AIHintOverlay(
+                        gameState = gameState,
+                        showHints = true,
+                        modifier = Modifier.matchParentSize()
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -418,6 +465,26 @@ fun TetrisGame(
         if (showGestureHint && !gameState.isGameOver) {
             GestureHintOverlay(
                 onDismiss = { showGestureHint = false }
+            )
+        }
+
+        // AI Assistant Hint Overlay
+        if (showAIHintOverlay && aiHint != null && isAIAssistantEnabled && !gameState.isGameOver) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showAIHintOverlay = false },
+                title = {
+                    Text(text = "AI Assistant")
+                },
+                text = {
+                    Text(text = aiHint ?: "")
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { showAIHintOverlay = false }
+                    ) {
+                        Text("OK")
+                    }
+                }
             )
         }
     }
