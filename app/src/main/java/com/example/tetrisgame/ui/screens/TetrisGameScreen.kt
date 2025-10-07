@@ -24,6 +24,7 @@ import com.example.tetrisgame.ui.components.header.CompactGameHeader
 import com.example.tetrisgame.ui.components.controls.TetrisStyledControls
 import com.example.tetrisgame.ui.components.dialogs.PauseMenuDialog
 import com.example.tetrisgame.ui.components.dialogs.GestureHintOverlay
+import com.example.tetrisgame.ui.components.dialogs.LevelUnlockDialog
 import com.example.tetrisgame.ui.theme.TetrisTheme
 import com.example.tetrisgame.input.HapticFeedbackManager
 import com.example.tetrisgame.input.swipeGestures
@@ -42,7 +43,8 @@ fun TetrisGame(
     isMusicEnabled: Boolean = true,
     gameLevel: com.example.tetrisgame.data.models.GameLevel = com.example.tetrisgame.data.models.GameLevel.CLASSIC,
     onAchievementUnlocked: (com.example.tetrisgame.data.models.Achievement) -> Unit = {},
-    onLevelComplete: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {}
+    onLevelComplete: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {},
+    onSwitchToLevel: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {}
 ) {
     val engine = remember { TetrisEngine() }
     var gameState by remember { mutableStateOf(engine.resetGame(gameLevel)) }
@@ -52,6 +54,7 @@ fun TetrisGame(
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
     var showGestureHint by remember { mutableStateOf(true) }
+    var showLevelUnlockDialog by remember { mutableStateOf<com.example.tetrisgame.data.models.GameLevel?>(null) }
 
     // Achievement tracking (only for game-over check)
     var hardDropCount by remember { mutableStateOf(0) }
@@ -127,8 +130,8 @@ fun TetrisGame(
         }
     }
 
-    // Detect score changes for sound effects, haptics, and screen shake
-    LaunchedEffect(gameState.score) {
+    // Detect score changes for sound effects, haptics, screen shake, and level unlock
+    LaunchedEffect(gameState.score, gameState.lines) {
         if (gameState.score > previousScore) {
             val scoreIncrease = gameState.score - previousScore
             val linesCleared = gameState.lastClearedLines.size
@@ -148,6 +151,29 @@ fun TetrisGame(
             }
         }
         previousScore = gameState.score
+
+        // Check for level unlock during gameplay (not just game over)
+        if (!gameState.isGameOver && showLevelUnlockDialog == null) {
+            val shouldUnlockNext = when (gameLevel) {
+                com.example.tetrisgame.data.models.GameLevel.CLASSIC -> gameState.score >= 1000 || gameState.lines >= 10
+                com.example.tetrisgame.data.models.GameLevel.SPEED -> gameState.score >= 2000 || gameState.lines >= 20
+                com.example.tetrisgame.data.models.GameLevel.CHALLENGE -> false
+            }
+
+            if (shouldUnlockNext) {
+                val nextLevel = when (gameLevel) {
+                    com.example.tetrisgame.data.models.GameLevel.CLASSIC -> com.example.tetrisgame.data.models.GameLevel.SPEED
+                    com.example.tetrisgame.data.models.GameLevel.SPEED -> com.example.tetrisgame.data.models.GameLevel.CHALLENGE
+                    com.example.tetrisgame.data.models.GameLevel.CHALLENGE -> null
+                }
+                nextLevel?.let {
+                    progressManager.unlockLevel(it)
+                    onLevelComplete(it)
+                    gameState = engine.togglePause(gameState) // Pause game
+                    showLevelUnlockDialog = it // Show dialog
+                }
+            }
+        }
     }
 
     // Detect level up
@@ -382,5 +408,22 @@ fun TetrisGame(
                 onDismiss = { showGestureHint = false }
             )
         }
+
+        // Level unlock dialog - show when new level is unlocked
+        LevelUnlockDialog(
+            unlockedLevel = showLevelUnlockDialog,
+            onSwitchToLevel = {
+                // User wants to switch to new level immediately
+                showLevelUnlockDialog?.let { newLevel ->
+                    onSwitchToLevel(newLevel)
+                    showLevelUnlockDialog = null
+                }
+            },
+            onContinue = {
+                // User wants to continue current game
+                showLevelUnlockDialog = null
+                gameState = engine.togglePause(gameState) // Resume game
+            }
+        )
     }
 }

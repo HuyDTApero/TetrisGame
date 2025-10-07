@@ -120,6 +120,12 @@ fun MainScreen() {
                 gameLevel = selectedGameLevel,
                 onAchievementUnlocked = { achievement ->
                     unlockedAchievements = unlockedAchievements + achievement
+                },
+                onLevelComplete = { /* Level unlocked notification */ },
+                onSwitchToLevel = { newLevel ->
+                    // User chose to switch to new level immediately
+                    selectedGameLevel = newLevel
+                    currentScreen = Screen.TETRIS_GAME
                 }
             )
         Screen.HIGH_SCORES -> HighScoresScreen(

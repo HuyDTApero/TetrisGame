@@ -34,6 +34,10 @@ fun TetrisBoard(
     val cellSize = 28.dp
     val cellSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { cellSize.toPx() }
 
+    // Use dynamic board dimensions from gameState
+    val boardWidth = gameState.board.width
+    val boardHeight = gameState.board.height
+
     // Animation state
     val particleSystem = remember { ParticleSystem() }
     var currentAnimation by remember { mutableStateOf<LineClearAnimation?>(null) }
@@ -46,7 +50,7 @@ fun TetrisBoard(
             // Emit particles for each cleared line
             gameState.lastClearedLines.forEach { lineIndex ->
                 // Emit particles across the line
-                for (col in 0 until BOARD_WIDTH) {
+                for (col in 0 until boardWidth) {
                     val x = (col + 0.5f) * cellSizePx
                     val y = (lineIndex + 0.5f) * cellSizePx
                     val color = gameState.board.cells.getOrNull(lineIndex)?.getOrNull(col)
@@ -80,7 +84,7 @@ fun TetrisBoard(
         colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A1A))
     ) {
         Canvas(
-            modifier = Modifier.size(cellSize * BOARD_WIDTH, cellSize * BOARD_HEIGHT)
+            modifier = Modifier.size(cellSize * boardWidth, cellSize * boardHeight)
         ) {
             drawTetrisBoard(gameState, cellSize.toPx())
 
@@ -89,7 +93,7 @@ fun TetrisBoard(
                 drawLineClearFlash(
                     lineIndices = animation.lineIndices,
                     cellSize = cellSize.toPx(),
-                    boardWidth = BOARD_WIDTH,
+                    boardWidth = boardWidth,
                     progress = animation.getProgress()
                 )
             }
@@ -101,15 +105,15 @@ fun TetrisBoard(
 }
 
 private fun DrawScope.drawTetrisBoard(gameState: TetrisGameState, cellSize: Float) {
-    val boardWidth = cellSize * BOARD_WIDTH
-    val boardHeight = cellSize * BOARD_HEIGHT
+    val boardWidth = cellSize * gameState.board.width
+    val boardHeight = cellSize * gameState.board.height
 
     drawRect(
         color = Color(0xFF0A0A0A),
         size = Size(boardWidth, boardHeight)
     )
 
-    for (i in 0..BOARD_WIDTH) {
+    for (i in 0..gameState.board.width) {
         drawLine(
             color = Color.Gray.copy(alpha = 0.3f),
             start = Offset(i * cellSize, 0f),
@@ -118,7 +122,7 @@ private fun DrawScope.drawTetrisBoard(gameState: TetrisGameState, cellSize: Floa
         )
     }
 
-    for (i in 0..BOARD_HEIGHT) {
+    for (i in 0..gameState.board.height) {
         drawLine(
             color = Color.Gray.copy(alpha = 0.3f),
             start = Offset(0f, i * cellSize),
