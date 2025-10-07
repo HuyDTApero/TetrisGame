@@ -507,149 +507,350 @@ fun GameOverDialog(
         val isNewHighScore = gameState.score > 0 && gameState.score >= highScore
         val isWin = gameState.isWon
 
-        AlertDialog(
-            onDismissRequest = { },
-            title = {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = if (isWin) "VICTORY!" else "GAME OVER",
-                        color = if (isWin) Color(0xFF4CAF50) else Color.Red,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 24.sp
-                    )
-                    if (isNewHighScore) {
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text(
-                            text = "🏆 NEW HIGH SCORE! 🏆",
-                            color = Color(0xFFFFD700), // Gold
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-            },
-            text = {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.8f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(0.9f)
+                    .shadow(16.dp, RoundedCornerShape(16.dp)),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = Color(0xFF1A1A2E)
+                )
+            ) {
                 Column(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Mode-specific stats
-                    when (gameState.gameMode) {
-                        com.example.tetrisgame.data.models.GameMode.SPRINT_40 -> {
-                            val minutes = gameState.elapsedTimeSeconds / 60
-                            val seconds = gameState.elapsedTimeSeconds % 60
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Time:", fontWeight = FontWeight.Bold)
-                                Text(
-                                    text = String.format("%d:%02d", minutes, seconds),
-                                    color = Color(0xFF00D4FF),
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                colors = listOf(
+                                    Color(0xFF1A1A2E),
+                                    Color(0xFF16213E),
+                                    Color(0xFF0F3460)
                                 )
-                            }
-                        }
-                        com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN -> {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Final Score:", fontWeight = FontWeight.Bold)
+                            )
+                        )
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    // Game Over Title with effects
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                    colors = if (isWin) {
+                                        listOf(
+                                            Color(0xFF4CAF50).copy(alpha = 0.2f),
+                                            Color(0xFF81C784).copy(alpha = 0.3f),
+                                            Color(0xFF4CAF50).copy(alpha = 0.2f)
+                                        )
+                                    } else {
+                                        listOf(
+                                            Color(0xFFFF5722).copy(alpha = 0.2f),
+                                            Color(0xFFFF8A65).copy(alpha = 0.3f),
+                                            Color(0xFFFF5722).copy(alpha = 0.2f)
+                                        )
+                                    }
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .padding(vertical = 16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                text = if (isWin) "🎉 VICTORY! 🎉" else "💀 GAME OVER 💀",
+                                color = if (isWin) Color(0xFF4CAF50) else Color(0xFFFF5722),
+                                fontWeight = FontWeight.Black,
+                                fontSize = 28.sp,
+                                textAlign = TextAlign.Center
+                            )
+
+                            if (isNewHighScore) {
+                                Spacer(modifier = Modifier.height(8.dp))
                                 Text(
-                                    text = gameState.score.toString(),
+                                    text = "🏆 NEW HIGH SCORE! 🏆",
                                     color = Color(0xFFFFD700),
                                     fontWeight = FontWeight.Bold,
+                                    fontSize = 18.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Stats Section
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .shadow(8.dp, RoundedCornerShape(12.dp)),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = Color(0xFF0F0F23)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(20.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                text = "FINAL STATS",
+                                color = Color(0xFF00D4FF),
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+
+                            Spacer(modifier = Modifier.height(8.dp))
+
+                            // Mode-specific primary stat
+                            when (gameState.gameMode) {
+                                com.example.tetrisgame.data.models.GameMode.SPRINT_40 -> {
+                                    val minutes = gameState.elapsedTimeSeconds / 60
+                                    val seconds = gameState.elapsedTimeSeconds % 60
+                                    StatRow(
+                                        label = "⏱️ TIME",
+                                        value = String.format("%d:%02d", minutes, seconds),
+                                        valueColor = Color(0xFF00D4FF),
+                                        isHighlight = true
+                                    )
+                                }
+
+                                com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN -> {
+                                    StatRow(
+                                        label = "🎯 FINAL SCORE",
+                                        value = gameState.score.toString(),
+                                        valueColor = Color(0xFFFFD700),
+                                        isHighlight = true
+                                    )
+                                }
+
+                                com.example.tetrisgame.data.models.GameMode.COUNTDOWN -> {
+                                    val minutes = gameState.elapsedTimeSeconds / 60
+                                    val seconds = gameState.elapsedTimeSeconds % 60
+                                    StatRow(
+                                        label = "⏰ SURVIVED",
+                                        value = String.format("%d:%02d", minutes, seconds),
+                                        valueColor = Color(0xFF4CAF50),
+                                        isHighlight = true
+                                    )
+                                }
+
+                                else -> {
+                                    StatRow(
+                                        label = "🎯 SCORE",
+                                        value = gameState.score.toString(),
+                                        valueColor = if (isNewHighScore) Color(0xFFFFD700) else Color.White,
+                                        isHighlight = true
+                                    )
+                                }
+                            }
+
+                            // Show high score for score-based modes
+                            if (gameState.gameMode == com.example.tetrisgame.data.models.GameMode.CLASSIC ||
+                                gameState.gameMode == com.example.tetrisgame.data.models.GameMode.CHALLENGE ||
+                                gameState.gameMode == com.example.tetrisgame.data.models.GameMode.ZEN
+                            ) {
+                                StatRow(
+                                    label = "👑 HIGH SCORE",
+                                    value = highScore.toString(),
+                                    valueColor = Color(0xFF00D4FF)
+                                )
+                            }
+
+                            // Divider
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0xFF333366))
+                            )
+
+                            // Secondary stats
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly
+                            ) {
+                                SecondaryStatCard(
+                                    icon = "📊",
+                                    label = "LEVEL",
+                                    value = gameState.level.toString(),
+                                    color = Color(0xFF9C27B0)
+                                )
+
+                                SecondaryStatCard(
+                                    icon = "📏",
+                                    label = "LINES",
+                                    value = gameState.lines.toString(),
+                                    color = Color(0xFF4CAF50)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Play Again Button
+                        Button(
+                            onClick = onRestart,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .shadow(8.dp, RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF4CAF50)
+                            )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🎮",
                                     fontSize = 20.sp
                                 )
-                            }
-                        }
-                        com.example.tetrisgame.data.models.GameMode.COUNTDOWN -> {
-                            val minutes = gameState.elapsedTimeSeconds / 60
-                            val seconds = gameState.elapsedTimeSeconds % 60
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Survived:", fontWeight = FontWeight.Bold)
                                 Text(
-                                    text = String.format("%d:%02d", minutes, seconds),
-                                    color = Color(0xFF4CAF50),
+                                    text = "PLAY AGAIN",
+                                    color = Color.White,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 18.sp
+                                    fontSize = 14.sp
                                 )
                             }
                         }
-                        else -> {
-                            // Classic/Challenge/Zen - show score
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text("Score:", fontWeight = FontWeight.Bold)
-                                Text(
-                                    text = gameState.score.toString(),
-                                    color = if (isNewHighScore) Color(0xFFFFD700) else Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
-                            }
-                        }
-                    }
 
-                    // Show high score for score-based modes
-                    if (gameState.gameMode == com.example.tetrisgame.data.models.GameMode.CLASSIC ||
-                        gameState.gameMode == com.example.tetrisgame.data.models.GameMode.CHALLENGE ||
-                        gameState.gameMode == com.example.tetrisgame.data.models.GameMode.ZEN) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text("High Score:", fontWeight = FontWeight.Bold)
-                            Text(
-                                text = highScore.toString(),
-                                color = Color.Cyan,
-                                fontWeight = FontWeight.Bold
+                        // Menu Button
+                        Button(
+                            onClick = onBackToMenu,
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .shadow(8.dp, RoundedCornerShape(12.dp)),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF757575)
                             )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "🏠",
+                                    fontSize = 20.sp
+                                )
+                                Text(
+                                    text = "MENU",
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 14.sp
+                                )
+                            }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Common stats
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Level:", fontWeight = FontWeight.Bold)
-                        Text(gameState.level.toString())
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Lines:", fontWeight = FontWeight.Bold)
-                        Text(gameState.lines.toString())
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = onRestart,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Green)
-                ) {
-                    Text("PLAY AGAIN")
-                }
-            },
-            dismissButton = {
-                Button(
-                    onClick = onBackToMenu,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.Gray)
-                ) {
-                    Text("MENU")
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun StatRow(
+    label: String,
+    value: String,
+    valueColor: Color = Color.White,
+    isHighlight: Boolean = false
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(
+                if (isHighlight) {
+                    Modifier
+                        .background(
+                            brush = androidx.compose.ui.graphics.Brush.horizontalGradient(
+                                colors = listOf(
+                                    valueColor.copy(alpha = 0.1f),
+                                    valueColor.copy(alpha = 0.2f),
+                                    valueColor.copy(alpha = 0.1f)
+                                )
+                            ),
+                            shape = RoundedCornerShape(8.dp)
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                } else {
+                    Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
+                }
+            ),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            color = Color(0xFFCCCCCC),
+            fontWeight = FontWeight.Medium,
+            fontSize = 14.sp
         )
+        Text(
+            text = value,
+            color = valueColor,
+            fontWeight = FontWeight.Bold,
+            fontSize = if (isHighlight) 20.sp else 16.sp
+        )
+    }
+}
+
+@Composable
+private fun SecondaryStatCard(
+    icon: String,
+    label: String,
+    value: String,
+    color: Color
+) {
+    Card(
+        modifier = Modifier
+            .shadow(4.dp, RoundedCornerShape(8.dp)),
+        shape = RoundedCornerShape(8.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = color.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = icon,
+                fontSize = 20.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                color = color,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+            Text(
+                text = label,
+                color = Color(0xFFCCCCCC),
+                fontWeight = FontWeight.Medium,
+                fontSize = 10.sp
+            )
+        }
     }
 }
