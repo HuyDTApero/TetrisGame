@@ -75,149 +75,126 @@ private fun GameBoyDPad(
         modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
-        // D-pad cross shape background - Game Boy style
-        Box(
-            modifier = Modifier
-                .size(120.dp)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            Color(0xFFF4F4F4),
-                            Color(0xFFE8E8E8),
-                            Color(0xFFDCDCDC),
-                            Color(0xFFC8C8C8)
-                        ),
-                        radius = 80f
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-                .shadow(6.dp, RoundedCornerShape(12.dp))
-        )
-
-        // Vertical bar of the cross - with inset shadow effect
-        Box(
-            modifier = Modifier
-                .width(42.dp)
-                .height(104.dp)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFD8D8D8),
-                            Color(0xFFF0F0F0),
-                            Color(0xFFE8E8E8),
-                            Color(0xFFD0D0D0)
-                        )
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .shadow(1.dp, RoundedCornerShape(8.dp))
-        )
-
-        // Horizontal bar of the cross - with inset shadow effect
-        Box(
-            modifier = Modifier
-                .width(104.dp)
-                .height(42.dp)
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFD8D8D8),
-                            Color(0xFFF0F0F0),
-                            Color(0xFFE8E8E8),
-                            Color(0xFFD0D0D0)
-                        )
-                    ),
-                    shape = RoundedCornerShape(8.dp)
-                )
-                .shadow(1.dp, RoundedCornerShape(8.dp))
-        )
-
-        // Direction buttons
+        // Clean cross pattern with only 3 buttons needed for Tetris
         Column(
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Up button (visual only)
-            DPadDirectionButton(
-                icon = Icons.Default.KeyboardArrowUp,
-                onClick = { },
-                enabled = false,
-                modifier = Modifier.size(40.dp, 35.dp)
-            )
-
-            // Middle row - Left and Right
+            // Top row - Left and Right
             Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                DPadDirectionButton(
+                CircularDPadButton(
                     icon = Icons.Default.KeyboardArrowLeft,
                     onClick = onLeft,
-                    modifier = Modifier.size(35.dp, 40.dp)
+                    enabled = true,
+                    color = Color(0xFF45B7D1) // Blue
                 )
 
-                Spacer(modifier = Modifier.width(30.dp))
-
-                DPadDirectionButton(
+                CircularDPadButton(
                     icon = Icons.Default.KeyboardArrowRight,
                     onClick = onRight,
-                    modifier = Modifier.size(35.dp, 40.dp)
+                    enabled = true,
+                    color = Color(0xFF96CEB4) // Green
                 )
             }
 
-            // Down button
-            DPadDirectionButton(
-                icon = Icons.Default.KeyboardArrowDown,
-                onClick = onDown,
-                modifier = Modifier.size(40.dp, 35.dp)
-            )
+            // Bottom row - Down button centered
+            Row(
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularDPadButton(
+                    icon = Icons.Default.KeyboardArrowDown,
+                    onClick = onDown,
+                    enabled = true,
+                    color = Color(0xFF45B7D1) // Same blue as left button for consistency
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun DPadDirectionButton(
+private fun CircularDPadButton(
     icon: ImageVector,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true
+    enabled: Boolean,
+    color: Color,
+    modifier: Modifier = Modifier
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-
-    Box(
+    Button(
+        onClick = onClick,
+        enabled = enabled,
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(
-                brush = if (enabled) {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFF8F8F8),
-                            Color(0xFFE8E8E8),
-                            Color(0xFFD8D8D8)
-                        )
-                    )
-                } else {
-                    Brush.linearGradient(
-                        colors = listOf(
-                            Color(0xFFE0E0E0),
-                            Color(0xFFD0D0D0),
-                            Color(0xFFC0C0C0)
-                        )
-                    )
-                }
-            )
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                enabled = enabled,
-                onClick = onClick
-            ),
-        contentAlignment = Alignment.Center
+            .size(60.dp) // Increased from 50dp to 60dp
+            .shadow(if (enabled) 8.dp else 3.dp, CircleShape),
+        shape = CircleShape,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color.White,
+            disabledContainerColor = Color.Transparent,
+            disabledContentColor = Color.White
+        ),
+        border = BorderStroke(2.dp, Color(0xFF2A2A2A)),
+        elevation = ButtonDefaults.buttonElevation(
+            defaultElevation = if (enabled) 8.dp else 3.dp,
+            pressedElevation = 2.dp,
+            disabledElevation = 2.dp
+        ),
+        contentPadding = PaddingValues(0.dp)
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = if (enabled) Color(0xFF404040) else Color(0xFF808080),
-            modifier = Modifier.size(24.dp)
-        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = if (enabled) {
+                            listOf(
+                                color.copy(alpha = 1.0f),
+                                color.copy(alpha = 0.9f),
+                                color.copy(alpha = 0.8f),
+                                color.copy(alpha = 0.7f)
+                            )
+                        } else {
+                            listOf(
+                                Color(0xFF3A3A3A),
+                                Color(0xFF2A2A2A),
+                                Color(0xFF1A1A1A)
+                            )
+                        },
+                        radius = 35f // Increased radius for larger button
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            // Circular highlight effect
+            if (enabled) {
+                Box(
+                    modifier = Modifier
+                        .size(35.dp) // Increased highlight size
+                        .background(
+                            brush = Brush.radialGradient(
+                                colors = listOf(
+                                    Color.White.copy(alpha = 0.3f),
+                                    Color.White.copy(alpha = 0.1f),
+                                    Color.Transparent
+                                ),
+                                radius = 18f // Increased radius
+                            ),
+                            shape = CircleShape
+                        )
+                )
+            }
+
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(28.dp) // Increased icon size
+            )
+        }
     }
 }
 
@@ -236,10 +213,10 @@ private fun GameBoyActionButtons(
             modifier = Modifier
                 .offset(x = (-30).dp, y = 30.dp)
         ) {
-            GameBoyButton(
+            CircularActionButton(
                 text = "B",
                 onClick = onHardDrop,
-                color = Color(0xFF9C5AAB) // Purple like original Game Boy
+                color = Color(0xFFFF6B9D) // Bright pink
             )
         }
 
@@ -248,17 +225,17 @@ private fun GameBoyActionButtons(
             modifier = Modifier
                 .offset(x = 30.dp, y = (-30).dp)
         ) {
-            GameBoyButton(
+            CircularActionButton(
                 text = "A",
                 onClick = onRotate,
-                color = Color(0xFF9C5AAB) // Purple like original Game Boy
+                color = Color(0xFF4ECDC4) // Bright cyan
             )
         }
     }
 }
 
 @Composable
-private fun GameBoyButton(
+private fun CircularActionButton(
     text: String,
     onClick: () -> Unit,
     color: Color,
@@ -267,14 +244,14 @@ private fun GameBoyButton(
     Button(
         onClick = onClick,
         modifier = modifier
-            .size(58.dp)
+            .size(60.dp)
             .shadow(8.dp, CircleShape),
-        shape = CircleShape,
+        shape = CircleShape, // Perfect circle
         colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFFE8E8E8),
-            contentColor = color
+            containerColor = Color.Transparent,
+            contentColor = Color.White
         ),
-        border = BorderStroke(3.dp, Color(0xFFD0D0D0)),
+        border = BorderStroke(2.dp, Color(0xFF2A2A2A)),
         elevation = ButtonDefaults.buttonElevation(
             defaultElevation = 8.dp,
             pressedElevation = 2.dp
@@ -287,22 +264,39 @@ private fun GameBoyButton(
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            Color(0xFFF8F8F8),
-                            Color(0xFFE8E8E8),
-                            Color(0xFFD8D8D8),
-                            Color(0xFFC8C8C8)
+                            color.copy(alpha = 1.0f),
+                            color.copy(alpha = 0.9f),
+                            color.copy(alpha = 0.8f),
+                            color.copy(alpha = 0.7f)
                         ),
-                        radius = 40f
+                        radius = 35f
                     ),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
+            // Circular highlight effect
+            Box(
+                modifier = Modifier
+                    .size(35.dp)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = listOf(
+                                Color.White.copy(alpha = 0.4f),
+                                Color.White.copy(alpha = 0.1f),
+                                Color.Transparent
+                            ),
+                            radius = 20f
+                        ),
+                        shape = CircleShape
+                    )
+            )
+
             Text(
                 text = text,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFF4A4A4A)
+                fontSize = 26.sp,
+                fontWeight = FontWeight.Black,
+                color = Color.White
             )
         }
     }
