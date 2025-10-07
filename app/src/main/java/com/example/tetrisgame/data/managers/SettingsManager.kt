@@ -35,6 +35,10 @@ class SettingsManager(private val context: Context) {
 
         // Theme settings
         private val THEME_KEY = stringPreferencesKey("theme")
+
+        // AI Assistant settings
+        private val AI_ASSISTANT_ENABLED_KEY = booleanPreferencesKey("ai_assistant_enabled")
+        private val AI_HINT_LEVEL_KEY = stringPreferencesKey("ai_hint_level")
     }
 
     // Audio settings
@@ -73,6 +77,22 @@ class SettingsManager(private val context: Context) {
             GameTheme.NEON
         }
     }
+
+    // AI Assistant settings
+    val isAIAssistantEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AI_ASSISTANT_ENABLED_KEY] ?: false
+    }
+
+    val aiHintLevel: Flow<com.example.tetrisgame.ai.TetrisAI.HintLevel> =
+        context.dataStore.data.map { preferences ->
+            val levelName = preferences[AI_HINT_LEVEL_KEY]
+                ?: com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE.name
+            try {
+                com.example.tetrisgame.ai.TetrisAI.HintLevel.valueOf(levelName)
+            } catch (e: Exception) {
+                com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE
+            }
+        }
 
     // Update functions
     suspend fun setSfxEnabled(enabled: Boolean) {
@@ -114,6 +134,18 @@ class SettingsManager(private val context: Context) {
     suspend fun setTheme(theme: GameTheme) {
         context.dataStore.edit { preferences ->
             preferences[THEME_KEY] = theme.name
+        }
+    }
+
+    suspend fun setAIAssistantEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AI_ASSISTANT_ENABLED_KEY] = enabled
+        }
+    }
+
+    suspend fun setAIHintLevel(level: com.example.tetrisgame.ai.TetrisAI.HintLevel) {
+        context.dataStore.edit { preferences ->
+            preferences[AI_HINT_LEVEL_KEY] = level.name
         }
     }
 

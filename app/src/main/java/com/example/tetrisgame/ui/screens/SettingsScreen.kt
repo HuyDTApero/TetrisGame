@@ -39,6 +39,10 @@ fun SettingsScreen(
     val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
     val currentTheme by settingsManager.theme.collectAsState(initial = GameTheme.NEON)
 
+    // AI Assistant settings
+    val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
+    val aiHintLevel by settingsManager.aiHintLevel.collectAsState(initial = com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE)
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -90,6 +94,60 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                // AI Assistant Section
+                item {
+                    SettingsSectionHeader("🤖 AI ASSISTANT")
+                }
+
+                item {
+                    SettingsCard {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // AI Assistant Toggle
+                            SettingsToggle(
+                                label = "Enable AI Assistant",
+                                checked = isAIAssistantEnabled,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        settingsManager.setAIAssistantEnabled(it)
+                                    }
+                                }
+                            )
+
+                            if (isAIAssistantEnabled) {
+                                Divider(color = Color.Gray.copy(alpha = 0.3f))
+
+                                // Hint Level Selection
+                                Text(
+                                    text = "Hint Level",
+                                    fontSize = 16.sp,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Medium
+                                )
+
+                                // Only show relevant hint levels (skip NONE)
+                                listOf(
+                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.MINIMAL,
+                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE,
+                                    com.example.tetrisgame.ai.TetrisAI.HintLevel.DETAILED
+                                ).forEach { level ->
+                                    HintLevelOption(
+                                        level = level,
+                                        isSelected = aiHintLevel == level,
+                                        onSelect = {
+                                            coroutineScope.launch {
+                                                settingsManager.setAIHintLevel(level)
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // Audio Section
                 item {
                     SettingsSectionHeader("🔊 AUDIO")
@@ -156,30 +214,6 @@ fun SettingsScreen(
                     }
                 }
 
-                // Haptic Section
-                item {
-                    SettingsSectionHeader("📳 HAPTIC FEEDBACK")
-                }
-
-                item {
-                    SettingsCard {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            SettingsToggle(
-                                label = "Vibration",
-                                checked = isHapticEnabled,
-                                onCheckedChange = {
-                                    coroutineScope.launch {
-                                        settingsManager.setHapticEnabled(it)
-                                    }
-                                }
-                            )
-                        }
-                    }
-                }
-
                 // Controls Section
                 item {
                     SettingsSectionHeader("🎮 CONTROLS")
@@ -203,6 +237,30 @@ fun SettingsScreen(
                                     gestureSensitivity < 40f -> "Low"
                                     gestureSensitivity < 70f -> "Medium"
                                     else -> "High"
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Haptic Section
+                item {
+                    SettingsSectionHeader("📳 HAPTIC FEEDBACK")
+                }
+
+                item {
+                    SettingsCard {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            SettingsToggle(
+                                label = "Vibration",
+                                checked = isHapticEnabled,
+                                onCheckedChange = {
+                                    coroutineScope.launch {
+                                        settingsManager.setHapticEnabled(it)
+                                    }
                                 }
                             )
                         }
@@ -260,6 +318,53 @@ fun SettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun HintLevelOption(
+    level: com.example.tetrisgame.ai.TetrisAI.HintLevel,
+    isSelected: Boolean,
+    onSelect: () -> Unit
+) {
+    val (levelText, levelDesc) = when (level) {
+        com.example.tetrisgame.ai.TetrisAI.HintLevel.MINIMAL -> "Minimal" to "Simple confirmations"
+        com.example.tetrisgame.ai.TetrisAI.HintLevel.MODERATE -> "Moderate" to "Helpful hints"
+        com.example.tetrisgame.ai.TetrisAI.HintLevel.DETAILED -> "Detailed" to "Full explanations"
+        com.example.tetrisgame.ai.TetrisAI.HintLevel.NONE -> "None" to "No hints"
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect() }
+            .border(
+                width = if (isSelected) 2.dp else 0.dp,
+                color = Color(0xFF00FF41),
+                shape = RoundedCornerShape(8.dp)
+            ),
+        colors = CardDefaults.cardColors(
+            containerColor = if (isSelected)
+                Color(0xFF00FF41).copy(alpha = 0.15f)
+            else
+                Color(0xFF2A2A3E).copy(alpha = 0.3f)
+        ),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "$levelText - $levelDesc",
+                fontSize = 14.sp,
+                color = if (isSelected) Color(0xFF00FF41) else Color.White,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+            )
         }
     }
 }
