@@ -177,7 +177,7 @@ class TetrisEngine {
         return gameState.copy(isPaused = !gameState.isPaused)
     }
 
-    fun resetGame(gameLevel: GameLevel = GameLevel.CLASSIC): TetrisGameState {
+    fun resetGame(gameLevel: GameLevel = GameLevel.CLASSIC, initialScore: Int = 0): TetrisGameState {
         val config = LevelConfig.getConfig(gameLevel)
         return TetrisGameState(
             board = GameBoard(
@@ -186,7 +186,8 @@ class TetrisEngine {
                 height = config.boardHeight
             ),
             gameLevel = gameLevel,
-            levelConfig = config
+            levelConfig = config,
+            score = initialScore
         )
     }
 

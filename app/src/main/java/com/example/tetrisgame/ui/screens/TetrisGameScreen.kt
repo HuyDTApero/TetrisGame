@@ -42,12 +42,13 @@ fun TetrisGame(
     isSoundEnabled: Boolean = true,
     isMusicEnabled: Boolean = true,
     gameLevel: com.example.tetrisgame.data.models.GameLevel = com.example.tetrisgame.data.models.GameLevel.CLASSIC,
+    initialScore: Int = 0,
     onAchievementUnlocked: (com.example.tetrisgame.data.models.Achievement) -> Unit = {},
     onLevelComplete: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {},
-    onSwitchToLevel: (com.example.tetrisgame.data.models.GameLevel) -> Unit = {}
+    onSwitchToLevel: (newLevel: com.example.tetrisgame.data.models.GameLevel, currentScore: Int) -> Unit = { _, _ -> }
 ) {
     val engine = remember { TetrisEngine() }
-    var gameState by remember { mutableStateOf(engine.resetGame(gameLevel)) }
+    var gameState by remember { mutableStateOf(engine.resetGame(gameLevel, initialScore)) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -413,9 +414,9 @@ fun TetrisGame(
         LevelUnlockDialog(
             unlockedLevel = showLevelUnlockDialog,
             onSwitchToLevel = {
-                // User wants to switch to new level immediately
+                // User wants to switch to new level immediately - pass current score
                 showLevelUnlockDialog?.let { newLevel ->
-                    onSwitchToLevel(newLevel)
+                    onSwitchToLevel(newLevel, gameState.score)
                     showLevelUnlockDialog = null
                 }
             },

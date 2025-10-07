@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
 fun MainScreen() {
     var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
     var selectedGameLevel by remember { mutableStateOf(GameLevel.CLASSIC) }
+    var accumulatedScore by remember { mutableStateOf(0) }
     val context = LocalContext.current
 
     // Settings manager
@@ -116,17 +117,22 @@ fun MainScreen() {
             )
             Screen.TETRIS_GAME -> key(selectedGameLevel) {
                 TetrisGame(
-                    onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
+                    onBackToMenu = {
+                        currentScreen = Screen.TETRIS_MENU
+                        accumulatedScore = 0 // Reset score when going back to menu
+                    },
                     isSoundEnabled = isSfxEnabled,
                     isMusicEnabled = isMusicEnabled,
                     gameLevel = selectedGameLevel,
+                    initialScore = accumulatedScore,
                     onAchievementUnlocked = { achievement ->
                         unlockedAchievements = unlockedAchievements + achievement
                     },
                     onLevelComplete = { /* Level unlocked notification */ },
-                    onSwitchToLevel = { newLevel ->
+                    onSwitchToLevel = { newLevel, currentScore ->
                         // User chose to switch to new level immediately
-                        // Changing selectedGameLevel will trigger key() to recreate TetrisGame
+                        // Save current score and switch level
+                        accumulatedScore = currentScore
                         selectedGameLevel = newLevel
                     }
                 )
