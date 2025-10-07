@@ -77,14 +77,15 @@ private fun DrawScope.drawBestMoveHint(
     boardHeight: Int,
     board: GameBoard
 ) {
-    // Create the suggested piece
+    // Create the suggested piece with the AI's recommended position and rotation
+    // Start from TOP of board (y=0) to properly calculate landing position
     val suggestedPiece = currentPiece.copy(
         x = bestMove.x,
-        y = currentPiece.y, // Start from current position, not 0
+        y = 0, // Always start from top for accurate landing calculation
         rotation = bestMove.rotation
     )
 
-    // Find landing position
+    // Find where this piece would actually land if dropped from top
     val landingY = findHintLandingPosition(suggestedPiece, board)
     val finalPiece = suggestedPiece.copy(y = landingY)
 
@@ -147,13 +148,13 @@ private fun DrawScope.drawBestMoveHint(
  * Find where the hinted piece would land - using actual board collision detection
  */
 private fun findHintLandingPosition(piece: GamePiece, board: GameBoard): Int {
-    // Start from piece's current position and move down until collision
-    for (y in piece.y until BOARD_HEIGHT) {
+    // Ensure we start from the very top (y = 0) for accurate landing detection
+    for (y in 0 until BOARD_HEIGHT) {
         val testPiece = piece.copy(y = y)
         if (!board.isValidPosition(testPiece)) {
             return y - 1 // Return the last valid position
         }
     }
-    // If no collision found, return current y (shouldn't happen in normal cases)
-    return piece.y
+    // If no collision found, return the last row
+    return BOARD_HEIGHT - 1
 }
