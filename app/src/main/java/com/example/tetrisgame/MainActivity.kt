@@ -17,6 +17,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -113,21 +114,23 @@ fun MainScreen() {
                 },
                 onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
             )
-            Screen.TETRIS_GAME -> TetrisGame(
-                onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
-                isSoundEnabled = isSfxEnabled,
-                isMusicEnabled = isMusicEnabled,
-                gameLevel = selectedGameLevel,
-                onAchievementUnlocked = { achievement ->
-                    unlockedAchievements = unlockedAchievements + achievement
-                },
-                onLevelComplete = { /* Level unlocked notification */ },
-                onSwitchToLevel = { newLevel ->
-                    // User chose to switch to new level immediately
-                    selectedGameLevel = newLevel
-                    currentScreen = Screen.TETRIS_GAME
-                }
-            )
+            Screen.TETRIS_GAME -> key(selectedGameLevel) {
+                TetrisGame(
+                    onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
+                    isSoundEnabled = isSfxEnabled,
+                    isMusicEnabled = isMusicEnabled,
+                    gameLevel = selectedGameLevel,
+                    onAchievementUnlocked = { achievement ->
+                        unlockedAchievements = unlockedAchievements + achievement
+                    },
+                    onLevelComplete = { /* Level unlocked notification */ },
+                    onSwitchToLevel = { newLevel ->
+                        // User chose to switch to new level immediately
+                        // Changing selectedGameLevel will trigger key() to recreate TetrisGame
+                        selectedGameLevel = newLevel
+                    }
+                )
+            }
         Screen.HIGH_SCORES -> HighScoresScreen(
             onBackToMenu = { currentScreen = Screen.TETRIS_MENU }
         )
