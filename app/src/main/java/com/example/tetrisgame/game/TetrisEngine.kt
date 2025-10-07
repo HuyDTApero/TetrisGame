@@ -1,5 +1,8 @@
 package com.example.tetrisgame.game
 
+import androidx.compose.ui.graphics.Color
+import com.example.tetrisgame.data.models.GameMode
+import com.example.tetrisgame.data.models.GameModeConfig
 import kotlin.random.Random
 
 class TetrisEngine {
@@ -15,7 +18,20 @@ class TetrisEngine {
         )
 
         // Check if game is over
-        val isGameOver = !gameState.board.isValidPosition(newPiece)
+        val wouldCollide = !gameState.board.isValidPosition(newPiece)
+
+        // ZEN mode: never game over, just clear bottom line if needed
+        if (wouldCollide && gameState.gameMode == GameMode.ZEN) {
+            val clearedBoard = clearBottomLine(gameState.board)
+            return gameState.copy(
+                board = clearedBoard,
+                currentPiece = newPiece,
+                nextPiece = nextPiece,
+                isGameOver = false
+            )
+        }
+
+        val isGameOver = wouldCollide
 
         return gameState.copy(
             currentPiece = if (isGameOver) null else newPiece,
@@ -115,15 +131,31 @@ class TetrisEngine {
         val newLines = gameState.lines + linesCleared
         val newLevel = calculateLevel(newLines)
 
+        // Mode-specific: Add time for Countdown mode when clearing lines
+        var newTimeRemaining = gameState.timeRemainingSeconds
+        if (gameState.gameMode == GameMode.COUNTDOWN && linesCleared > 0) {
+            newTimeRemaining += linesCleared * 5 // +5 seconds per line
+        }
+
         // Create new state without current piece
-        val intermediateState = gameState.copy(
+        var intermediateState = gameState.copy(
             board = clearedBoard,
             currentPiece = null,
             score = newScore,
             lines = newLines,
             level = newLevel,
-            lastClearedLines = clearedLineIndices
+            lastClearedLines = clearedLineIndices,
+            timeRemainingSeconds = newTimeRemaining
         )
+
+        // Check win condition (e.g., Sprint 40 lines)
+        if (intermediateState.checkWinCondition()) {
+            intermediateState = intermediateState.copy(
+                isWon = true,
+                isGameOver = true
+            )
+            return intermediateState
+        }
 
         // Spawn new piece
         return spawnNewPiece(intermediateState)
@@ -163,8 +195,34 @@ class TetrisEngine {
         return gameState.copy(isPaused = !gameState.isPaused)
     }
 
-    fun resetGame(): TetrisGameState {
-        return TetrisGameState()
+    fun resetGame(mode: GameMode = GameMode.CLASSIC): TetrisGameState {
+        val config = GameModeConfig.getConfig(mode)
+
+        // Create initial board based on mode
+        val initialBoard = when (mode) {
+            GameMode.CHALLENGE -> createGarbageBoard(5, 0.6f) // 5 rows, 60% fill
+            GameMode.CHEESE -> createGarbageBoard(10, 0.9f) // 10 rows, 90% fill with guaranteed holes
+            else -> GameBoard()
+        }
+
+        // Calculate initial time remaining for time-limited modes
+        val timeRemaining = if (config.hasTimeLimit) {
+            config.timeLimitSeconds
+        } else {
+            0
+        }
+
+        // Initialize tide timer for Rising Tide mode
+        val nextTide = if (mode == GameMode.RISING_TIDE) 10 else 10
+
+        return TetrisGameState(
+            board = initialBoard,
+            gameMode = mode,
+            level = config.startLevel,
+            gameStartTime = System.currentTimeMillis(),
+            timeRemainingSeconds = timeRemaining,
+            nextTideSeconds = nextTide
+        )
     }
 
     fun getGhostPiece(gameState: TetrisGameState): GamePiece? {
@@ -177,5 +235,61 @@ class TetrisEngine {
         }
 
         return ghostPiece
+    }
+
+    // Helper: Clear bottom line (for ZEN mode)
+    private fun clearBottomLine(board: GameBoard): GameBoard {
+        val newCells = board.cells.toMutableList()
+        newCells.removeAt(newCells.size - 1) // Remove bottom row
+        newCells.add(0, List(BOARD_WIDTH) { null }) // Add empty row at top
+        return GameBoard(newCells)
+    }
+
+    // Helper: Create board with random obstacles (for Challenge and Cheese modes)
+    private fun createGarbageBoard(numRows: Int, fillRate: Float): GameBoard {
+        val cells = MutableList(BOARD_HEIGHT) { MutableList<Color?>(BOARD_WIDTH) { null } }
+
+        // Fill bottom N rows with garbage
+        for (row in (BOARD_HEIGHT - numRows) until BOARD_HEIGHT) {
+            // For each row, ensure at least one hole
+            val holeIndex = Random.nextInt(BOARD_WIDTH)
+            for (col in 0 until BOARD_WIDTH) {
+                if (col != holeIndex && Random.nextFloat() < fillRate) {
+                    cells[row][col] = Color.Gray
+                }
+            }
+        }
+
+        return GameBoard(cells.map { it.toList() })
+    }
+
+    // Helper: Add garbage line from bottom (for Rising Tide mode)
+    fun addGarbageLine(gameState: TetrisGameState): TetrisGameState {
+        val cells = gameState.board.cells.toMutableList()
+
+        // Remove top row
+        cells.removeAt(0)
+
+        // Add garbage line at bottom with one random hole
+        val holeIndex = Random.nextInt(BOARD_WIDTH)
+        val garbageLine = List(BOARD_WIDTH) { col ->
+            if (col == holeIndex) null else Color(0xFF444444)
+        }
+        cells.add(garbageLine)
+
+        val newBoard = GameBoard(cells)
+
+        // Check if current piece is still valid after adding garbage
+        val currentPiece = gameState.currentPiece
+        if (currentPiece != null && !newBoard.isValidPosition(currentPiece)) {
+            // Game over if piece collides with new garbage
+            return gameState.copy(
+                board = newBoard,
+                isGameOver = true,
+                currentPiece = null
+            )
+        }
+
+        return gameState.copy(board = newBoard)
     }
 }

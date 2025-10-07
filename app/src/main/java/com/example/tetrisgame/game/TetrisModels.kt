@@ -1,6 +1,7 @@
 package com.example.tetrisgame.game
 
 import androidx.compose.ui.graphics.Color
+import com.example.tetrisgame.data.models.GameMode
 
 // Tetris game board dimensions
 const val BOARD_WIDTH = 10
@@ -198,9 +199,50 @@ data class TetrisGameState(
     val lines: Int = 0,
     val isGameOver: Boolean = false,
     val isPaused: Boolean = false,
-    val lastClearedLines: List<Int> = emptyList() // For animations
+    val lastClearedLines: List<Int> = emptyList(), // For animations
+
+    // Mode-specific fields
+    val gameMode: GameMode = GameMode.CLASSIC,
+    val gameStartTime: Long = System.currentTimeMillis(),
+    val elapsedTimeSeconds: Int = 0,
+    val isWon: Boolean = false,
+    val timeRemainingSeconds: Int = 0, // For time-limited modes
+    val nextTideSeconds: Int = 10 // For Rising Tide mode - seconds until next garbage line
 ) {
     fun calculateDropSpeed(): Long {
-        return maxOf(50, 1000 - (level - 1) * 100).toLong()
+        // For modes with fixed speed, don't increase speed with level
+        return if (gameMode == GameMode.SPRINT_40 ||
+                   gameMode == GameMode.ULTRA_2MIN ||
+                   gameMode == GameMode.ZEN ||
+                   gameMode == GameMode.CHEESE) {
+            500L // Fixed speed
+        } else {
+            maxOf(50, 1000 - (level - 1) * 100).toLong()
+        }
+    }
+
+    // Calculate target lines remaining (for Sprint mode)
+    fun getTargetLinesRemaining(): Int {
+        return when (gameMode) {
+            GameMode.SPRINT_40 -> maxOf(0, 40 - lines)
+            else -> 0
+        }
+    }
+
+    // Check if game objectives are met
+    fun checkWinCondition(): Boolean {
+        return when (gameMode) {
+            GameMode.SPRINT_40 -> lines >= 40
+            else -> false
+        }
+    }
+
+    // Check if time limit exceeded
+    fun checkTimeLimit(): Boolean {
+        return when (gameMode) {
+            GameMode.ULTRA_2MIN -> timeRemainingSeconds <= 0
+            GameMode.COUNTDOWN -> timeRemainingSeconds <= 0
+            else -> false
+        }
     }
 }

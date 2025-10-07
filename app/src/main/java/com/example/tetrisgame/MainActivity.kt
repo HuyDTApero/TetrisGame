@@ -29,10 +29,12 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.example.tetrisgame.data.managers.SettingsManager
 import com.example.tetrisgame.data.managers.HighScoreManager
 import com.example.tetrisgame.data.models.Achievement
+import com.example.tetrisgame.data.models.GameMode
 import com.example.tetrisgame.ui.components.dialogs.AchievementUnlockDialog
 import com.example.tetrisgame.ui.navigation.Screen
 import com.example.tetrisgame.ui.screens.AchievementsScreen
 import com.example.tetrisgame.ui.screens.HighScoresScreen
+import com.example.tetrisgame.ui.screens.ModeSelectionScreen
 import com.example.tetrisgame.ui.screens.SettingsScreen
 import com.example.tetrisgame.ui.screens.TetrisGame
 import com.example.tetrisgame.ui.screens.TetrisMenuGame
@@ -67,6 +69,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MainScreen() {
     var currentScreen by remember { mutableStateOf(Screen.TETRIS_MENU) }
+    var selectedGameMode by remember { mutableStateOf(GameMode.CLASSIC) }
     val context = LocalContext.current
 
     // Settings manager
@@ -92,15 +95,23 @@ fun MainScreen() {
     Box(modifier = Modifier.fillMaxSize()) {
         when (currentScreen) {
             Screen.TETRIS_MENU -> TetrisMenuGame(
-                onStartGame = { currentScreen = Screen.TETRIS_GAME },
+                onStartGame = { currentScreen = Screen.MODE_SELECTION },
                 onHighScores = { currentScreen = Screen.HIGH_SCORES },
                 onSettings = { currentScreen = Screen.SETTINGS },
                 onAchievements = { currentScreen = Screen.ACHIEVEMENTS },
                 highScore = highScore,
                 newAchievementsCount = unlockedAchievements.size
             )
+            Screen.MODE_SELECTION -> ModeSelectionScreen(
+                onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
+                onModeSelected = { mode ->
+                    selectedGameMode = mode
+                    currentScreen = Screen.TETRIS_GAME
+                }
+            )
             Screen.TETRIS_GAME -> TetrisGame(
                 onBackToMenu = { currentScreen = Screen.TETRIS_MENU },
+                gameMode = selectedGameMode,
                 isSoundEnabled = isSfxEnabled,
                 isMusicEnabled = isMusicEnabled,
                 onAchievementUnlocked = { achievement ->

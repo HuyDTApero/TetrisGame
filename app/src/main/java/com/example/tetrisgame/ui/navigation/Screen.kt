@@ -2,6 +2,7 @@ package com.example.tetrisgame.ui.navigation
 
 enum class Screen {
     TETRIS_MENU,
+    MODE_SELECTION,
     TETRIS_GAME,
     HIGH_SCORES,
     SETTINGS,

@@ -38,14 +38,16 @@ import kotlinx.coroutines.launch
 @Composable
 fun TetrisGame(
     onBackToMenu: () -> Unit,
+    gameMode: com.example.tetrisgame.data.models.GameMode = com.example.tetrisgame.data.models.GameMode.CLASSIC,
     isSoundEnabled: Boolean = true,
     isMusicEnabled: Boolean = true,
     onAchievementUnlocked: (com.example.tetrisgame.data.models.Achievement) -> Unit = {}
 ) {
-    var gameState by remember { mutableStateOf(TetrisGameState()) }
     val engine = remember { TetrisEngine() }
+    var gameState by remember { mutableStateOf(engine.resetGame(gameMode)) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
+    val modeConfig = remember { com.example.tetrisgame.data.models.GameModeConfig.getConfig(gameMode) }
 
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
@@ -191,6 +193,65 @@ fun TetrisGame(
         }
     }
 
+    // Timer for time-limited modes
+    LaunchedEffect(gameState.isPaused, gameState.isGameOver, modeConfig.hasTimeLimit) {
+        if (modeConfig.hasTimeLimit && !gameState.isPaused && !gameState.isGameOver) {
+            while (!gameState.isPaused && !gameState.isGameOver) {
+                delay(1000) // Update every second
+                val newElapsedTime = gameState.elapsedTimeSeconds + 1
+                var newTimeRemaining = gameState.timeRemainingSeconds - 1
+
+                // For Ultra mode, just track elapsed time
+                if (gameMode == com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN ||
+                    gameMode == com.example.tetrisgame.data.models.GameMode.COUNTDOWN) {
+
+                    // Check if time is up
+                    if (newTimeRemaining <= 0) {
+                        newTimeRemaining = 0
+                        gameState = gameState.copy(
+                            elapsedTimeSeconds = newElapsedTime,
+                            timeRemainingSeconds = newTimeRemaining,
+                            isGameOver = true
+                        )
+                        break
+                    }
+                }
+
+                gameState = gameState.copy(
+                    elapsedTimeSeconds = newElapsedTime,
+                    timeRemainingSeconds = newTimeRemaining
+                )
+            }
+        } else {
+            // For non-time-limited modes, just track elapsed time
+            while (!gameState.isPaused && !gameState.isGameOver) {
+                delay(1000)
+                gameState = gameState.copy(
+                    elapsedTimeSeconds = gameState.elapsedTimeSeconds + 1
+                )
+            }
+        }
+    }
+
+    // Rising Tide timer - add garbage every 10 seconds
+    LaunchedEffect(gameState.isPaused, gameState.isGameOver, gameMode) {
+        if (gameMode == com.example.tetrisgame.data.models.GameMode.RISING_TIDE &&
+            !gameState.isPaused && !gameState.isGameOver) {
+            while (!gameState.isPaused && !gameState.isGameOver) {
+                delay(1000) // Update every second
+                val newNextTide = gameState.nextTideSeconds - 1
+
+                if (newNextTide <= 0) {
+                    // Add garbage line and reset timer
+                    gameState = engine.addGarbageLine(gameState)
+                    gameState = gameState.copy(nextTideSeconds = 10) // Reset to 10 seconds
+                } else {
+                    gameState = gameState.copy(nextTideSeconds = newNextTide)
+                }
+            }
+        }
+    }
+
     LaunchedEffect(gameState.isPaused, gameState.isGameOver) {
         while (!gameState.isPaused && !gameState.isGameOver && gameState.currentPiece != null) {
             delay(gameState.calculateDropSpeed())
@@ -322,7 +383,7 @@ fun TetrisGame(
             gameState = gameState,
             highScore = highScore,
             onRestart = {
-                gameState = engine.resetGame()
+                gameState = engine.resetGame(gameMode)
                 gameState = engine.spawnNewPiece(gameState)
                 resetAchievementStats()
             },
@@ -335,18 +396,156 @@ fun TetrisGame(
                 gameState = engine.togglePause(gameState)
             },
             onRestart = {
-                gameState = engine.resetGame()
+                gameState = engine.resetGame(gameMode)
                 gameState = engine.spawnNewPiece(gameState)
                 resetAchievementStats()
             },
             onBackToMenu = onBackToMenu
         )
 
+        // Mode-specific objective/timer overlay
+        if (!gameState.isGameOver && !gameState.isPaused) {
+            ModeObjectiveOverlay(
+                gameState = gameState,
+                modeConfig = modeConfig,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 80.dp)
+            )
+        }
+
         // Gesture hint overlay (show for first few seconds)
         if (showGestureHint && !gameState.isGameOver) {
             GestureHintOverlay(
                 onDismiss = { showGestureHint = false }
             )
+        }
+    }
+}
+
+@Composable
+private fun ModeObjectiveOverlay(
+    gameState: TetrisGameState,
+    modeConfig: com.example.tetrisgame.data.models.GameModeConfig,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .wrapContentSize()
+            .shadow(8.dp, RoundedCornerShape(12.dp)),
+        shape = RoundedCornerShape(12.dp),
+        color = Color(0xCC1A1A2E)
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Mode name
+            Text(
+                text = "${modeConfig.icon} ${modeConfig.name}",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            // Mode-specific objective
+            when (gameState.gameMode) {
+                com.example.tetrisgame.data.models.GameMode.SPRINT_40 -> {
+                    val remaining = gameState.getTargetLinesRemaining()
+                    Text(
+                        text = "$remaining lines remaining",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (remaining <= 10) Color(0xFFFF6B6B) else Color(0xFF00D4FF)
+                    )
+                }
+                com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN -> {
+                    val minutes = gameState.timeRemainingSeconds / 60
+                    val seconds = gameState.timeRemainingSeconds % 60
+                    Text(
+                        text = String.format("%d:%02d", minutes, seconds),
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (gameState.timeRemainingSeconds <= 30) Color(0xFFFF6B6B) else Color(0xFF4CAF50)
+                    )
+                }
+                com.example.tetrisgame.data.models.GameMode.COUNTDOWN -> {
+                    val minutes = gameState.timeRemainingSeconds / 60
+                    val seconds = gameState.timeRemainingSeconds % 60
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Time",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = String.format("%d:%02d", minutes, seconds),
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (gameState.timeRemainingSeconds <= 30) Color(0xFFFF6B6B) else Color(0xFF4CAF50)
+                        )
+                    }
+                }
+                com.example.tetrisgame.data.models.GameMode.ZEN -> {
+                    Text(
+                        text = "Relax & Practice",
+                        fontSize = 14.sp,
+                        color = Color(0xFF4CAF50),
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+                com.example.tetrisgame.data.models.GameMode.CHALLENGE -> {
+                    Text(
+                        text = "Survive!",
+                        fontSize = 14.sp,
+                        color = Color(0xFFFF6B6B),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                com.example.tetrisgame.data.models.GameMode.RISING_TIDE -> {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(
+                            text = "Next Wave",
+                            fontSize = 12.sp,
+                            color = Color.Gray
+                        )
+                        Text(
+                            text = "${gameState.nextTideSeconds}s",
+                            fontSize = 24.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (gameState.nextTideSeconds <= 3) Color(0xFFFF6B6B) else Color(0xFF00D4FF)
+                        )
+                    }
+                }
+                com.example.tetrisgame.data.models.GameMode.INVISIBLE -> {
+                    Text(
+                        text = "👻 Invisible Mode",
+                        fontSize = 14.sp,
+                        color = Color(0xFFBB86FC),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                com.example.tetrisgame.data.models.GameMode.CHEESE -> {
+                    Text(
+                        text = "Dig through the cheese!",
+                        fontSize = 14.sp,
+                        color = Color(0xFFFFD700),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                else -> {
+                    // Classic mode - show elapsed time
+                    val minutes = gameState.elapsedTimeSeconds / 60
+                    val seconds = gameState.elapsedTimeSeconds % 60
+                    Text(
+                        text = String.format("Time: %d:%02d", minutes, seconds),
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
         }
     }
 }
