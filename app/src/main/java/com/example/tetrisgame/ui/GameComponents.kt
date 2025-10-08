@@ -16,6 +16,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -26,10 +27,17 @@ import com.example.tetrisgame.ui.effects.LineClearAnimation
 import com.example.tetrisgame.ui.effects.drawLineClearFlashOptimized
 import kotlinx.coroutines.delay
 
+/**
+ * Show the Tetris board with all visual/animated effects.
+ * [isHardDropping] - Should be true when a hard drop animation is running
+ * [hardDropProgress] - 0f to 1f, how far the hard drop animation has progressed (0 = piece at start, 1 = piece landed)
+ */
 @Composable
 fun TetrisBoard(
     gameState: TetrisGameState,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isHardDropping: Boolean = false,
+    hardDropProgress: Float = 0f
 ) {
     val cellSize = 28.dp
     val cellSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { cellSize.toPx() }
@@ -86,7 +94,76 @@ fun TetrisBoard(
         Canvas(
             modifier = Modifier.size(cellSize * BOARD_WIDTH, cellSize * BOARD_HEIGHT)
         ) {
-            drawTetrisBoard(gameState, cellSize.toPx(), tetrisEngine)
+            // Draw Tetris board base state
+            drawTetrisBoard(gameState, cellSize.toPx(), tetrisEngine, isHardDropping)
+
+            // Draw Hard Drop animation effects
+            if (isHardDropping && gameState.currentPiece != null) {
+                val piece = gameState.currentPiece!!
+                val ghostPiece = tetrisEngine.getGhostPieceOptimized(gameState)
+
+                // Simple trail effect - just fading ghost pieces
+                val shape = piece.getRotatedShape()
+                val startY = piece.y.toFloat() * cellSize.toPx()
+                val endY = (ghostPiece?.y?.toFloat() ?: piece.y.toFloat()) * cellSize.toPx()
+
+                // Progress in pixels
+                val progressY = startY + (endY - startY) * hardDropProgress
+
+                // Clean trail - fewer, more subtle ghost pieces
+                val numTrailSteps = 4
+                for (trailStep in 0 until numTrailSteps) {
+                    val trailProgress = trailStep / (numTrailSteps - 1).toFloat()
+                    val yTrail = startY + (progressY - startY) * trailProgress
+                    val alpha = 0.08f + 0.12f * (1f - trailProgress) // More subtle
+
+                    for (row in shape.indices) {
+                        for (col in shape[row].indices) {
+                            if (shape[row][col]) {
+                                val x = (piece.x + col).toFloat() * cellSize.toPx()
+                                val y = yTrail + row.toFloat() * cellSize.toPx()
+                                drawCell(
+                                    color = piece.tetromino.color.copy(alpha = alpha),
+                                    x = x,
+                                    y = y,
+                                    size = cellSize.toPx()
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Draw the main falling piece at current position
+                for (row in shape.indices) {
+                    for (col in shape[row].indices) {
+                        if (shape[row][col]) {
+                            val x = (piece.x + col).toFloat() * cellSize.toPx()
+                            val y = progressY + row.toFloat() * cellSize.toPx()
+
+                            // Subtle glow effect - draw a slightly larger, transparent version first
+                            val glowAlpha =
+                                0.15f * hardDropProgress // Subtle glow that increases with speed
+                            val glowSize = cellSize.toPx() * (1f + 0.1f * hardDropProgress)
+                            val glowOffset = (glowSize - cellSize.toPx()) / 2f
+
+                            drawCell(
+                                color = piece.tetromino.color.copy(alpha = glowAlpha),
+                                x = x - glowOffset,
+                                y = y - glowOffset,
+                                size = glowSize
+                            )
+
+                            // Main piece
+                            drawCell(
+                                color = piece.tetromino.color,
+                                x = x,
+                                y = y,
+                                size = cellSize.toPx()
+                            )
+                        }
+                    }
+                }
+            }
 
             // Draw line clear flash animation
             currentAnimation?.let { animation ->
@@ -107,7 +184,8 @@ fun TetrisBoard(
 private fun DrawScope.drawTetrisBoard(
     gameState: TetrisGameState,
     cellSize: Float,
-    tetrisEngine: TetrisEngine
+    tetrisEngine: TetrisEngine,
+    isHardDropping: Boolean = false
 ) {
     val boardWidth = cellSize * BOARD_WIDTH
     val boardHeight = cellSize * BOARD_HEIGHT
@@ -174,19 +252,21 @@ private fun DrawScope.drawTetrisBoard(
     }
 
     // Draw current piece
-    gameState.currentPiece?.let { piece ->
-        val shape = piece.getRotatedShape()
-        for (row in shape.indices) {
-            for (col in shape[row].indices) {
-                if (shape[row][col]) {
-                    val x = (piece.x + col) * cellSize
-                    val y = (piece.y + row) * cellSize
-                    drawCell(
-                        color = piece.tetromino.color,
-                        x = x,
-                        y = y,
-                        size = cellSize
-                    )
+    if (!isHardDropping) {
+        gameState.currentPiece?.let { piece ->
+            val shape = piece.getRotatedShape()
+            for (row in shape.indices) {
+                for (col in shape[row].indices) {
+                    if (shape[row][col]) {
+                        val x = (piece.x + col) * cellSize
+                        val y = (piece.y + row) * cellSize
+                        drawCell(
+                            color = piece.tetromino.color,
+                            x = x,
+                            y = y,
+                            size = cellSize
+                        )
+                    }
                 }
             }
         }

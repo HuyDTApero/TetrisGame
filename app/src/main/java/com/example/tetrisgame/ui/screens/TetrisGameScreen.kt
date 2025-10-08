@@ -65,7 +65,69 @@ fun TetrisGame(
     val coroutineScope = rememberCoroutineScope()
     val modeConfig = remember { com.example.tetrisgame.data.models.GameModeConfig.getConfig(gameMode) }
 
-    // Helper function for optimized hard drop with async processing
+    // Animated Hard Drop State
+    var isHardDropping by remember { mutableStateOf(false) }
+    var hardDropStartY by remember { mutableStateOf(0) }
+    var hardDropTargetY by remember { mutableStateOf(0) }
+    var hardDropAnimationProgress by remember { mutableStateOf(0f) }
+
+    // Helper function for animated hard drop
+    suspend fun performAnimatedHardDrop() {
+        if (isHardDropping) return // Prevent multiple hard drops
+
+        val currentPiece = gameState.currentPiece ?: return
+        val ghostPiece = engine.getGhostPieceOptimized(gameState) ?: return
+
+        // Start animation
+        isHardDropping = true
+        hardDropStartY = currentPiece.y
+        hardDropTargetY = ghostPiece.y
+        hardDropAnimationProgress = 0f
+
+        val dropDistance = hardDropTargetY - hardDropStartY
+        if (dropDistance <= 0) {
+            // No distance to drop, finish immediately
+            isHardDropping = false
+            gameState = engine.hardDrop(gameState)
+            return
+        }
+
+        // Animate the drop (faster animation - 100ms total for snappy feel)
+        val animationDuration = 100L
+        val frameTime = 10L // ~100 FPS for smooth but not excessive
+        val totalFrames = (animationDuration / frameTime).toInt()
+
+        repeat(totalFrames) { frame ->
+            delay(frameTime)
+            hardDropAnimationProgress = (frame + 1).toFloat() / totalFrames
+
+            // Simple ease-out animation for natural deceleration
+            val easedProgress =
+                1f - (1f - hardDropAnimationProgress) * (1f - hardDropAnimationProgress)
+
+            val currentY = hardDropStartY + (dropDistance * easedProgress).toInt()
+
+            // Update piece position for visual effect
+            gameState = gameState.copy(
+                currentPiece = currentPiece.copy(y = currentY)
+            )
+        }
+
+        // Finish the drop
+        isHardDropping = false
+        hardDropAnimationProgress = 0f
+        gameState = try {
+            engine.placePieceAndContinueAsync(
+                gameState.copy(
+                    currentPiece = ghostPiece
+                )
+            )
+        } catch (e: Exception) {
+            engine.hardDrop(gameState)
+        }
+    }
+
+    // Helper function for optimized hard drop with async processing (fallback)
     suspend fun performOptimizedHardDrop(): TetrisGameState {
         return try {
             // Try async processing first for better performance
@@ -370,13 +432,19 @@ fun TetrisGame(
                                         }
 
                                         GestureType.SWIPE_UP -> {
-                                            gameState = performOptimizedHardDrop()
-                                            hardDropCount++
-                                            piecesPlaced++
-                                            if (isSoundEnabled) soundManager.playSound(
-                                                EnhancedSoundManager.SoundType.LOCK
-                                            )
-                                            if (isHapticEnabled) hapticManager.onLock()
+                                            coroutineScope.launch {
+                                                if (isSoundEnabled) soundManager.playSound(
+                                                    EnhancedSoundManager.SoundType.MOVE
+                                                )
+                                                if (isHapticEnabled) hapticManager.onMove()
+                                                performAnimatedHardDrop()
+                                                hardDropCount++
+                                                piecesPlaced++
+                                                if (isSoundEnabled) soundManager.playSound(
+                                                    EnhancedSoundManager.SoundType.LOCK
+                                                )
+                                                if (isHapticEnabled) hapticManager.onLock()
+                                            }
                                         }
 
                                         GestureType.TAP -> {
@@ -395,7 +463,9 @@ fun TetrisGame(
                     )
             ) {
                 TetrisBoard(
-                    gameState = gameState
+                    gameState = gameState,
+                    isHardDropping = isHardDropping,
+                    hardDropProgress = hardDropAnimationProgress
                 )
 
                 if (isAIAssistantEnabled && !gameState.isPaused && !gameState.isGameOver) {
@@ -450,7 +520,9 @@ fun TetrisGame(
                 onHardDrop = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = performOptimizedHardDrop()
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (isHapticEnabled) hapticManager.onMove()
+                            performAnimatedHardDrop()
                             hardDropCount++
                             piecesPlaced++
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
