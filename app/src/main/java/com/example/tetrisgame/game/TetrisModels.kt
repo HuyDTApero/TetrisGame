@@ -147,6 +147,46 @@ data class GameBoard(
         return true
     }
 
+    // Optimized version with early exit and boundary check optimization
+    fun isValidPositionOptimized(piece: GamePiece): Boolean {
+        val shape = piece.getRotatedShape()
+
+        // Early boundary checks
+        val minX = piece.x
+        val maxX = piece.x + shape[0].size - 1
+        val minY = piece.y
+        val maxY = piece.y + shape.size - 1
+
+        if (minX < 0 || maxX >= BOARD_WIDTH || minY < 0 || maxY >= BOARD_HEIGHT) {
+            // Still need to check individual cells for more precise boundary checking
+            // because pieces might have empty spaces
+        }
+
+        for (row in shape.indices) {
+            for (col in shape[row].indices) {
+                if (shape[row][col]) {
+                    val boardX = piece.x + col
+                    val boardY = piece.y + row
+
+                    // Check boundaries (optimized)
+                    if (boardX < 0 || boardX >= BOARD_WIDTH ||
+                        boardY < 0 || boardY >= BOARD_HEIGHT
+                    ) {
+                        return false
+                    }
+
+                    // Check collision with existing pieces (with bounds check)
+                    if (boardY < cells.size && boardX < cells[boardY].size &&
+                        cells[boardY][boardX] != null
+                    ) {
+                        return false
+                    }
+                }
+            }
+        }
+        return true
+    }
+
     fun placePiece(piece: GamePiece): GameBoard {
         val newCells = cells.map { it.toMutableList() }.toMutableList()
         val shape = piece.getRotatedShape()
@@ -169,24 +209,36 @@ data class GameBoard(
     }
 
     fun clearLines(): Triple<GameBoard, Int, List<Int>> {
-        val newCells = mutableListOf<List<Color?>>()
-        var clearedLines = 0
+        // Optimized algorithm - avoid creating multiple intermediate lists
         val clearedLineIndices = mutableListOf<Int>()
 
-        for ((index, row) in cells.withIndex()) {
-            if (row.any { it == null }) {
-                newCells.add(row)
-            } else {
-                clearedLines++
-                clearedLineIndices.add(index)
+        // First pass: identify completed lines
+        for (rowIndex in cells.indices) {
+            if (cells[rowIndex].all { it != null }) {
+                clearedLineIndices.add(rowIndex)
             }
         }
 
-        repeat(clearedLines) {
-            newCells.add(0, List(BOARD_WIDTH) { null })
+        if (clearedLineIndices.isEmpty()) {
+            return Triple(this, 0, emptyList())
         }
 
-        return Triple(GameBoard(newCells), clearedLines, clearedLineIndices)
+        // Second pass: build new board efficiently
+        val newCells = mutableListOf<List<Color?>>()
+
+        // Add empty lines at top (equal to number of cleared lines)
+        repeat(clearedLineIndices.size) {
+            newCells.add(List(BOARD_WIDTH) { null })
+        }
+
+        // Copy non-cleared lines
+        for (rowIndex in cells.indices) {
+            if (rowIndex !in clearedLineIndices) {
+                newCells.add(cells[rowIndex])
+            }
+        }
+
+        return Triple(GameBoard(newCells), clearedLineIndices.size, clearedLineIndices)
     }
 }
 

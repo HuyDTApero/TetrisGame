@@ -3,9 +3,119 @@ package com.example.tetrisgame.game
 import androidx.compose.ui.graphics.Color
 import com.example.tetrisgame.data.models.GameMode
 import com.example.tetrisgame.data.models.GameModeConfig
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlin.random.Random
 
 class TetrisEngine {
+
+    // Cache for board calculations to avoid repeated work
+    private var cachedBoardHash: Int = 0
+    private var cachedValidPositions: Set<Pair<Int, Int>> = emptySet()
+
+    // State caching for performance
+    private var lastGameState: TetrisGameState? = null
+    private var cachedGhostPiece: GamePiece? = null
+
+    // Optimized movement with caching
+    fun movePieceLeftOptimized(gameState: TetrisGameState): TetrisGameState {
+        val piece = gameState.currentPiece ?: return gameState
+        val newPiece = piece.moveLeft()
+
+        return if (gameState.board.isValidPositionOptimized(newPiece)) {
+            gameState.copy(currentPiece = newPiece).also {
+                invalidateGhostPieceCache()
+            }
+        } else {
+            gameState
+        }
+    }
+
+    fun movePieceRightOptimized(gameState: TetrisGameState): TetrisGameState {
+        val piece = gameState.currentPiece ?: return gameState
+        val newPiece = piece.moveRight()
+
+        return if (gameState.board.isValidPositionOptimized(newPiece)) {
+            gameState.copy(currentPiece = newPiece).also {
+                invalidateGhostPieceCache()
+            }
+        } else {
+            gameState
+        }
+    }
+
+    fun movePieceDownOptimized(gameState: TetrisGameState): TetrisGameState {
+        val piece = gameState.currentPiece ?: return gameState
+        val newPiece = piece.moveDown()
+
+        return if (gameState.board.isValidPositionOptimized(newPiece)) {
+            gameState.copy(currentPiece = newPiece).also {
+                invalidateGhostPieceCache()
+            }
+        } else {
+            // Piece can't move down, place it and spawn new one
+            placePieceAndContinue(gameState)
+        }
+    }
+
+    fun rotatePieceOptimized(gameState: TetrisGameState): TetrisGameState {
+        val piece = gameState.currentPiece ?: return gameState
+        val rotatedPiece = piece.rotate()
+
+        // Try basic rotation
+        if (gameState.board.isValidPositionOptimized(rotatedPiece)) {
+            return gameState.copy(currentPiece = rotatedPiece).also {
+                invalidateGhostPieceCache()
+            }
+        }
+
+        // Try wall kicks (SRS - Super Rotation System)
+        val wallKicks = getWallKicks(piece.rotation % 4, (piece.rotation + 1) % 4)
+        for (kick in wallKicks) {
+            val kickedPiece = rotatedPiece.copy(
+                x = rotatedPiece.x + kick.first,
+                y = rotatedPiece.y + kick.second
+            )
+            if (gameState.board.isValidPositionOptimized(kickedPiece)) {
+                return gameState.copy(currentPiece = kickedPiece).also {
+                    invalidateGhostPieceCache()
+                }
+            }
+        }
+
+        return gameState // Rotation not possible
+    }
+
+    // Optimized ghost piece with caching
+    fun getGhostPieceOptimized(gameState: TetrisGameState): GamePiece? {
+        val piece = gameState.currentPiece ?: return null
+
+        // Check if we can use cached ghost piece
+        if (cachedGhostPiece != null && lastGameState != null &&
+            lastGameState?.currentPiece == piece &&
+            lastGameState?.board == gameState.board
+        ) {
+            return cachedGhostPiece
+        }
+
+        var ghostPiece = piece
+
+        // Move ghost piece down until it would collide
+        while (gameState.board.isValidPositionOptimized(ghostPiece.moveDown())) {
+            ghostPiece = ghostPiece.moveDown()
+        }
+
+        // Cache the result
+        cachedGhostPiece = ghostPiece
+        lastGameState = gameState
+
+        return ghostPiece
+    }
+
+    private fun invalidateGhostPieceCache() {
+        cachedGhostPiece = null
+        lastGameState = null
+    }
 
     fun spawnNewPiece(gameState: TetrisGameState): TetrisGameState {
         val currentPiece = gameState.nextPiece ?: getRandomTetromino()
@@ -116,16 +226,17 @@ class TetrisEngine {
         return finalGameState.copy(score = finalGameState.score + bonusScore)
     }
 
+    // Optimized version for immediate use (non-async)
     private fun placePieceAndContinue(gameState: TetrisGameState): TetrisGameState {
         val piece = gameState.currentPiece ?: return gameState
 
-        // Place piece on board
+        // Place piece on board (optimized)
         val newBoard = gameState.board.placePiece(piece)
 
-        // Clear completed lines
+        // Clear completed lines (now optimized)
         val (clearedBoard, linesCleared, clearedLineIndices) = newBoard.clearLines()
 
-        // Calculate score
+        // Calculate score and other game state updates
         val lineScore = calculateLineScore(linesCleared, gameState.level)
         val newScore = gameState.score + lineScore
         val newLines = gameState.lines + linesCleared
@@ -158,7 +269,87 @@ class TetrisEngine {
         }
 
         // Spawn new piece
-        return spawnNewPiece(intermediateState)
+        return spawnNewPieceOptimized(intermediateState)
+    }
+
+    suspend fun placePieceAndContinueAsync(gameState: TetrisGameState): TetrisGameState =
+        withContext(Dispatchers.Default) {
+            val piece = gameState.currentPiece ?: return@withContext gameState
+
+            // Place piece on board (optimized)
+            val newBoard = gameState.board.placePiece(piece)
+
+            // Clear completed lines (now optimized)
+            val (clearedBoard, linesCleared, clearedLineIndices) = newBoard.clearLines()
+
+            // Calculate score and other game state updates
+            val lineScore = calculateLineScore(linesCleared, gameState.level)
+            val newScore = gameState.score + lineScore
+            val newLines = gameState.lines + linesCleared
+            val newLevel = calculateLevel(newLines)
+
+            // Mode-specific: Add time for Countdown mode when clearing lines
+            var newTimeRemaining = gameState.timeRemainingSeconds
+            if (gameState.gameMode == GameMode.COUNTDOWN && linesCleared > 0) {
+                newTimeRemaining += linesCleared * 5 // +5 seconds per line
+            }
+
+            // Create new state without current piece
+            var intermediateState = gameState.copy(
+                board = clearedBoard,
+                currentPiece = null,
+                score = newScore,
+                lines = newLines,
+                level = newLevel,
+                lastClearedLines = clearedLineIndices,
+                timeRemainingSeconds = newTimeRemaining
+            )
+
+            // Check win condition (e.g., Sprint 40 lines)
+            if (intermediateState.checkWinCondition()) {
+                intermediateState = intermediateState.copy(
+                    isWon = true,
+                    isGameOver = true
+                )
+                return@withContext intermediateState
+            }
+
+            // Spawn new piece (this can also be optimized)
+            return@withContext spawnNewPieceOptimized(intermediateState)
+        }
+
+    // Optimized spawn new piece with caching
+    private fun spawnNewPieceOptimized(gameState: TetrisGameState): TetrisGameState {
+        val currentPiece = gameState.nextPiece ?: getRandomTetromino()
+        val nextPiece = getRandomTetromino()
+
+        val newPiece = GamePiece(
+            tetromino = currentPiece,
+            x = BOARD_WIDTH / 2 - 1,
+            y = 0
+        )
+
+        // Check if game is over (optimized collision detection)
+        val wouldCollide = !gameState.board.isValidPositionOptimized(newPiece)
+
+        // ZEN mode: never game over, just clear bottom line if needed
+        if (wouldCollide && gameState.gameMode == GameMode.ZEN) {
+            val clearedBoard = clearBottomLine(gameState.board)
+            return gameState.copy(
+                board = clearedBoard,
+                currentPiece = newPiece,
+                nextPiece = nextPiece,
+                isGameOver = false
+            )
+        }
+
+        val isGameOver = wouldCollide
+
+        return gameState.copy(
+            currentPiece = if (isGameOver) null else newPiece,
+            nextPiece = nextPiece,
+            isGameOver = isGameOver
+        )
     }
 
     private fun getRandomTetromino(): Tetromino {

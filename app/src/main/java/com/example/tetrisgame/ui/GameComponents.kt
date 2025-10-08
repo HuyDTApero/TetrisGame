@@ -21,9 +21,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.tetrisgame.game.*
-import com.example.tetrisgame.ui.effects.ParticleSystem
+import com.example.tetrisgame.ui.effects.OptimizedParticleSystem
 import com.example.tetrisgame.ui.effects.LineClearAnimation
-import com.example.tetrisgame.ui.effects.drawLineClearFlash
+import com.example.tetrisgame.ui.effects.drawLineClearFlashOptimized
 import kotlinx.coroutines.delay
 
 @Composable
@@ -34,8 +34,11 @@ fun TetrisBoard(
     val cellSize = 28.dp
     val cellSizePx = with(androidx.compose.ui.platform.LocalDensity.current) { cellSize.toPx() }
 
+    // Create TetrisEngine instance
+    val tetrisEngine = remember { TetrisEngine() }
+
     // Animation state
-    val particleSystem = remember { ParticleSystem() }
+    val particleSystem = remember { OptimizedParticleSystem() }
     var currentAnimation by remember { mutableStateOf<LineClearAnimation?>(null) }
 
     // Detect new line clears
@@ -57,11 +60,12 @@ fun TetrisBoard(
         }
     }
 
-    // Update particle system
+    // Update particle system with async processing
     LaunchedEffect(Unit) {
         while (true) {
-            kotlinx.coroutines.delay(16) // ~60 FPS
-            particleSystem.update(0.016f)
+            delay(16) // ~60 FPS
+            // Use async update for better performance
+            particleSystem.updateAsync(0.016f)
 
             // Clear animation when finished
             currentAnimation?.let { animation ->
@@ -82,11 +86,11 @@ fun TetrisBoard(
         Canvas(
             modifier = Modifier.size(cellSize * BOARD_WIDTH, cellSize * BOARD_HEIGHT)
         ) {
-            drawTetrisBoard(gameState, cellSize.toPx())
+            drawTetrisBoard(gameState, cellSize.toPx(), tetrisEngine)
 
             // Draw line clear flash animation
             currentAnimation?.let { animation ->
-                drawLineClearFlash(
+                drawLineClearFlashOptimized(
                     lineIndices = animation.lineIndices,
                     cellSize = cellSize.toPx(),
                     boardWidth = BOARD_WIDTH,
@@ -100,7 +104,11 @@ fun TetrisBoard(
     }
 }
 
-private fun DrawScope.drawTetrisBoard(gameState: TetrisGameState, cellSize: Float) {
+private fun DrawScope.drawTetrisBoard(
+    gameState: TetrisGameState,
+    cellSize: Float,
+    tetrisEngine: TetrisEngine
+) {
     val boardWidth = cellSize * BOARD_WIDTH
     val boardHeight = cellSize * BOARD_HEIGHT
 
@@ -145,7 +153,7 @@ private fun DrawScope.drawTetrisBoard(gameState: TetrisGameState, cellSize: Floa
     }
 
     // Draw ghost piece (preview where piece will land)
-    val ghostPiece = TetrisEngine().getGhostPiece(gameState)
+    val ghostPiece = tetrisEngine.getGhostPieceOptimized(gameState)
     ghostPiece?.let { ghost ->
         val shape = ghost.getRotatedShape()
         for (row in shape.indices) {

@@ -49,6 +49,7 @@ import com.example.tetrisgame.ui.components.header.CompactGameHeader
 import com.example.tetrisgame.ui.effects.AnimatedBackground
 import com.example.tetrisgame.ui.effects.rememberShakeController
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Composable
 fun TetrisGame(
@@ -108,177 +109,171 @@ fun TetrisGame(
         maxLinesClearedAtOnce = 0
     }
 
-    // Apply volume settings
+    // Optimized deferred update for sound and music
     LaunchedEffect(sfxVolume) {
         soundManager.setSoundVolume(sfxVolume)
     }
-
     LaunchedEffect(musicVolume) {
         musicGenerator.setVolume(musicVolume)
     }
-
-    // Cleanup sound manager
     DisposableEffect(Unit) {
         onDispose {
             soundManager.release()
+            musicGenerator.stopMusic()
         }
     }
 
     LaunchedEffect(Unit) {
-        gameState = engine.spawnNewPiece(gameState)
-        if (isMusicEnabled) {
-            musicGenerator.startMusic(this)
-        }
-    }
-
-    // Control music based on game state
-    LaunchedEffect(isMusicEnabled, gameState.isPaused, gameState.isGameOver) {
-        if (isMusicEnabled && !gameState.isPaused && !gameState.isGameOver) {
-            if (!musicGenerator.isPlaying()) {
+        coroutineScope.launch {
+            gameState = engine.spawnNewPiece(gameState)
+            if (isMusicEnabled) {
                 musicGenerator.startMusic(this)
             }
-        } else {
-            musicGenerator.stopMusic()
         }
     }
 
-    // Cleanup music when leaving screen
-    DisposableEffect(Unit) {
-        onDispose {
-            musicGenerator.stopMusic()
-        }
-    }
-
-    // Detect score changes for sound effects, haptics, and screen shake
-    LaunchedEffect(gameState.score) {
-        if (gameState.score > previousScore) {
-            val scoreIncrease = gameState.score - previousScore
-            val linesCleared = gameState.lastClearedLines.size
-
-            if (scoreIncrease >= 1200) {
-                // Tetris = 4 lines cleared at once
-                maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, 4)
-                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
-                if (isHapticEnabled) hapticManager.onTetris()
-                shakeController.shake(intensity = 20f, duration = 200)
-            } else if (scoreIncrease > 0) {
-                // Track max lines cleared at once
-                maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, linesCleared)
-                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
-                if (isHapticEnabled) hapticManager.onLineClear()
-                shakeController.shake(intensity = 5f * linesCleared, duration = 100)
-            }
-        }
-        previousScore = gameState.score
-    }
-
-    // Detect level up
-    LaunchedEffect(gameState.level) {
-        if (gameState.level > previousLevel) {
-            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
-            if (isHapticEnabled) hapticManager.onLevelUp()
-        }
-        previousLevel = gameState.level
-    }
-
-    // Detect game over and save score
-    LaunchedEffect(gameState.isGameOver) {
-        if (gameState.isGameOver) {
-            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
-            if (isHapticEnabled) hapticManager.onGameOver()
-
-            // Save game result
-            highScoreManager.saveGameResult(
-                score = gameState.score,
-                lines = gameState.lines,
-                level = gameState.level
-            )
-
-            // Check ALL achievements once at game over
-            val gameEndTime = System.currentTimeMillis()
-            val newAchievements = achievementManager.checkAchievements(
-                score = gameState.score,
-                level = gameState.level,
-                linesInGame = gameState.lines,
-                linesClearedAtOnce = maxLinesClearedAtOnce,
-                hardDropUsed = hardDropCount > 0,
-                rotationUsed = rotationCount > 0,
-                gameStartTime = gameStartTime,
-                gameEndTime = gameEndTime,
-                piecesPlaced = piecesPlaced
-            )
-            newAchievements.forEach { achievement ->
-                onAchievementUnlocked(achievement)
-            }
-
-            // Increment game count
-            achievementManager.incrementGameCount()
-        }
-    }
-
-    // Timer for time-limited modes
-    LaunchedEffect(gameState.isPaused, gameState.isGameOver, modeConfig.hasTimeLimit) {
-        if (modeConfig.hasTimeLimit && !gameState.isPaused && !gameState.isGameOver) {
-            while (!gameState.isPaused && !gameState.isGameOver) {
-                delay(1000) // Update every second
-                val newElapsedTime = gameState.elapsedTimeSeconds + 1
-                var newTimeRemaining = gameState.timeRemainingSeconds - 1
-
-                // For Ultra mode, just track elapsed time
-                if (gameMode == com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN ||
-                    gameMode == com.example.tetrisgame.data.models.GameMode.COUNTDOWN) {
-
-                    // Check if time is up
-                    if (newTimeRemaining <= 0) {
-                        newTimeRemaining = 0
-                        gameState = gameState.copy(
-                            elapsedTimeSeconds = newElapsedTime,
-                            timeRemainingSeconds = newTimeRemaining,
-                            isGameOver = true
-                        )
-                        break
-                    }
+    // Control music based on game state with deferred check
+    LaunchedEffect(isMusicEnabled, gameState.isPaused, gameState.isGameOver) {
+        coroutineScope.launch {
+            if (isMusicEnabled && !gameState.isPaused && !gameState.isGameOver) {
+                if (!musicGenerator.isPlaying()) {
+                    musicGenerator.startMusic(this)
                 }
-
-                gameState = gameState.copy(
-                    elapsedTimeSeconds = newElapsedTime,
-                    timeRemainingSeconds = newTimeRemaining
-                )
-            }
-        } else {
-            // For non-time-limited modes, just track elapsed time
-            while (!gameState.isPaused && !gameState.isGameOver) {
-                delay(1000)
-                gameState = gameState.copy(
-                    elapsedTimeSeconds = gameState.elapsedTimeSeconds + 1
-                )
+            } else {
+                musicGenerator.stopMusic()
             }
         }
     }
 
-    // Rising Tide timer - add garbage every 10 seconds
-    LaunchedEffect(gameState.isPaused, gameState.isGameOver, gameMode) {
-        if (gameMode == com.example.tetrisgame.data.models.GameMode.RISING_TIDE &&
-            !gameState.isPaused && !gameState.isGameOver) {
-            while (!gameState.isPaused && !gameState.isGameOver) {
-                delay(1000) // Update every second
-                val newNextTide = gameState.nextTideSeconds - 1
+    // Score/level/gameover deferred side effects
+    LaunchedEffect(gameState.score) {
+        coroutineScope.launch {
+            if (gameState.score > previousScore) {
+                val scoreIncrease = gameState.score - previousScore
+                val linesCleared = gameState.lastClearedLines.size
 
-                if (newNextTide <= 0) {
-                    // Add garbage line and reset timer
-                    gameState = engine.addGarbageLine(gameState)
-                    gameState = gameState.copy(nextTideSeconds = 10) // Reset to 10 seconds
-                } else {
-                    gameState = gameState.copy(nextTideSeconds = newNextTide)
+                if (scoreIncrease >= 1200) {
+                    maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, 4)
+                    if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
+                    if (isHapticEnabled) hapticManager.onTetris()
+                    shakeController.shake(intensity = 20f, duration = 200)
+                } else if (scoreIncrease > 0) {
+                    maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, linesCleared)
+                    if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
+                    if (isHapticEnabled) hapticManager.onLineClear()
+                    shakeController.shake(intensity = 5f * linesCleared, duration = 100)
+                }
+            }
+            previousScore = gameState.score
+        }
+    }
+
+    LaunchedEffect(gameState.level) {
+        coroutineScope.launch {
+            if (gameState.level > previousLevel) {
+                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
+                if (isHapticEnabled) hapticManager.onLevelUp()
+            }
+            previousLevel = gameState.level
+        }
+    }
+
+    LaunchedEffect(gameState.isGameOver) {
+        coroutineScope.launch {
+            if (gameState.isGameOver) {
+                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
+                if (isHapticEnabled) hapticManager.onGameOver()
+
+                highScoreManager.saveGameResult(
+                    score = gameState.score,
+                    lines = gameState.lines,
+                    level = gameState.level
+                )
+
+                val gameEndTime = System.currentTimeMillis()
+                val newAchievements = achievementManager.checkAchievements(
+                    score = gameState.score,
+                    level = gameState.level,
+                    linesInGame = gameState.lines,
+                    linesClearedAtOnce = maxLinesClearedAtOnce,
+                    hardDropUsed = hardDropCount > 0,
+                    rotationUsed = rotationCount > 0,
+                    gameStartTime = gameStartTime,
+                    gameEndTime = gameEndTime,
+                    piecesPlaced = piecesPlaced
+                )
+                newAchievements.forEach { achievement ->
+                    onAchievementUnlocked(achievement)
+                }
+                achievementManager.incrementGameCount()
+            }
+        }
+    }
+
+    // Optimized timer/garbage fall/auto drop: use launch for async processing
+    LaunchedEffect(gameState.isPaused, gameState.isGameOver, modeConfig.hasTimeLimit) {
+        coroutineScope.launch {
+            if (modeConfig.hasTimeLimit && !gameState.isPaused && !gameState.isGameOver) {
+                while (!gameState.isPaused && !gameState.isGameOver) {
+                    delay(1000)
+                    val newElapsedTime = gameState.elapsedTimeSeconds + 1
+                    var newTimeRemaining = gameState.timeRemainingSeconds - 1
+                    if (gameMode == com.example.tetrisgame.data.models.GameMode.ULTRA_2MIN ||
+                        gameMode == com.example.tetrisgame.data.models.GameMode.COUNTDOWN
+                    ) {
+
+                        if (newTimeRemaining <= 0) {
+                            newTimeRemaining = 0
+                            gameState = gameState.copy(
+                                elapsedTimeSeconds = newElapsedTime,
+                                timeRemainingSeconds = newTimeRemaining,
+                                isGameOver = true
+                            )
+                            break
+                        }
+                    }
+
+                    gameState = gameState.copy(
+                        elapsedTimeSeconds = newElapsedTime,
+                        timeRemainingSeconds = newTimeRemaining
+                    )
+                }
+            } else {
+                while (!gameState.isPaused && !gameState.isGameOver) {
+                    delay(1000)
+                    gameState = gameState.copy(
+                        elapsedTimeSeconds = gameState.elapsedTimeSeconds + 1
+                    )
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(gameState.isPaused, gameState.isGameOver, gameMode) {
+        coroutineScope.launch {
+            if (gameMode == com.example.tetrisgame.data.models.GameMode.RISING_TIDE &&
+                !gameState.isPaused && !gameState.isGameOver
+            ) {
+                while (!gameState.isPaused && !gameState.isGameOver) {
+                    delay(1000)
+                    val newNextTide = gameState.nextTideSeconds - 1
+                    if (newNextTide <= 0) {
+                        gameState = engine.addGarbageLine(gameState)
+                        gameState = gameState.copy(nextTideSeconds = 10)
+                    } else {
+                        gameState = gameState.copy(nextTideSeconds = newNextTide)
+                    }
                 }
             }
         }
     }
 
     LaunchedEffect(gameState.isPaused, gameState.isGameOver) {
-        while (!gameState.isPaused && !gameState.isGameOver && gameState.currentPiece != null) {
-            delay(gameState.calculateDropSpeed())
-            gameState = engine.movePieceDown(gameState)
+        coroutineScope.launch {
+            while (!gameState.isPaused && !gameState.isGameOver && gameState.currentPiece != null) {
+                delay(gameState.calculateDropSpeed())
+                gameState = engine.movePieceDown(gameState)
+            }
         }
     }
 
@@ -293,7 +288,6 @@ fun TetrisGame(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
 
-            // Compact Header with Score and Next Piece (Side by Side)
             CompactGameHeader(
                 gameState = gameState,
                 onBackToMenu = onBackToMenu,
@@ -305,7 +299,6 @@ fun TetrisGame(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Game Board (takes most space)
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -317,48 +310,50 @@ fun TetrisGame(
                     .swipeGestures(
                         onGesture = { gestureType ->
                             if (!gameState.isPaused && !gameState.isGameOver) {
-                                when (gestureType) {
-                                    GestureType.SWIPE_LEFT -> {
-                                        gameState = engine.movePieceLeft(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(
-                                            EnhancedSoundManager.SoundType.MOVE
-                                        )
-                                        if (isHapticEnabled) hapticManager.onMove()
-                                    }
+                                coroutineScope.launch {
+                                    when (gestureType) {
+                                        GestureType.SWIPE_LEFT -> {
+                                            gameState = engine.movePieceLeft(gameState)
+                                            if (isSoundEnabled) soundManager.playSound(
+                                                EnhancedSoundManager.SoundType.MOVE
+                                            )
+                                            if (isHapticEnabled) hapticManager.onMove()
+                                        }
 
-                                    GestureType.SWIPE_RIGHT -> {
-                                        gameState = engine.movePieceRight(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(
-                                            EnhancedSoundManager.SoundType.MOVE
-                                        )
-                                        if (isHapticEnabled) hapticManager.onMove()
-                                    }
+                                        GestureType.SWIPE_RIGHT -> {
+                                            gameState = engine.movePieceRight(gameState)
+                                            if (isSoundEnabled) soundManager.playSound(
+                                                EnhancedSoundManager.SoundType.MOVE
+                                            )
+                                            if (isHapticEnabled) hapticManager.onMove()
+                                        }
 
-                                    GestureType.SWIPE_DOWN -> {
-                                        gameState = engine.movePieceDown(gameState)
-                                        if (isSoundEnabled) soundManager.playSound(
-                                            EnhancedSoundManager.SoundType.MOVE
-                                        )
-                                        if (isHapticEnabled) hapticManager.onMove()
-                                    }
+                                        GestureType.SWIPE_DOWN -> {
+                                            gameState = engine.movePieceDown(gameState)
+                                            if (isSoundEnabled) soundManager.playSound(
+                                                EnhancedSoundManager.SoundType.MOVE
+                                            )
+                                            if (isHapticEnabled) hapticManager.onMove()
+                                        }
 
-                                    GestureType.SWIPE_UP -> {
-                                        gameState = engine.hardDrop(gameState)
-                                        hardDropCount++
-                                        piecesPlaced++
-                                        if (isSoundEnabled) soundManager.playSound(
-                                            EnhancedSoundManager.SoundType.LOCK
-                                        )
-                                        if (isHapticEnabled) hapticManager.onLock()
-                                    }
+                                        GestureType.SWIPE_UP -> {
+                                            gameState = engine.hardDrop(gameState)
+                                            hardDropCount++
+                                            piecesPlaced++
+                                            if (isSoundEnabled) soundManager.playSound(
+                                                EnhancedSoundManager.SoundType.LOCK
+                                            )
+                                            if (isHapticEnabled) hapticManager.onLock()
+                                        }
 
-                                    GestureType.TAP -> {
-                                        gameState = engine.rotatePiece(gameState)
-                                        rotationCount++
-                                        if (isSoundEnabled) soundManager.playSound(
-                                            EnhancedSoundManager.SoundType.MOVE
-                                        )
-                                        if (isHapticEnabled) hapticManager.onRotate()
+                                        GestureType.TAP -> {
+                                            gameState = engine.rotatePiece(gameState)
+                                            rotationCount++
+                                            if (isSoundEnabled) soundManager.playSound(
+                                                EnhancedSoundManager.SoundType.MOVE
+                                            )
+                                            if (isHapticEnabled) hapticManager.onRotate()
+                                        }
                                     }
                                 }
                             }
@@ -370,7 +365,6 @@ fun TetrisGame(
                     gameState = gameState
                 )
 
-                // AI Visual Hint Overlay
                 if (isAIAssistantEnabled && !gameState.isPaused && !gameState.isGameOver) {
                     aiAssistant.AIHintOverlay(
                         gameState = gameState,
@@ -382,44 +376,53 @@ fun TetrisGame(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Tetris-themed Game Controls
             TetrisStyledControls(
                 onMoveLeft = {
                     if (!gameState.isPaused) {
-                        gameState = engine.movePieceLeft(gameState)
-                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                        if (isHapticEnabled) hapticManager.onMove()
+                        coroutineScope.launch {
+                            gameState = engine.movePieceLeft(gameState)
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (isHapticEnabled) hapticManager.onMove()
+                        }
                     }
                 },
                 onMoveRight = {
                     if (!gameState.isPaused) {
-                        gameState = engine.movePieceRight(gameState)
-                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                        if (isHapticEnabled) hapticManager.onMove()
+                        coroutineScope.launch {
+                            gameState = engine.movePieceRight(gameState)
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (isHapticEnabled) hapticManager.onMove()
+                        }
                     }
                 },
                 onMoveDown = {
                     if (!gameState.isPaused) {
-                        gameState = engine.movePieceDown(gameState)
-                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                        if (isHapticEnabled) hapticManager.onMove()
+                        coroutineScope.launch {
+                            gameState = engine.movePieceDown(gameState)
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (isHapticEnabled) hapticManager.onMove()
+                        }
                     }
                 },
                 onRotate = {
                     if (!gameState.isPaused) {
-                        gameState = engine.rotatePiece(gameState)
-                        rotationCount++
-                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
-                        if (isHapticEnabled) hapticManager.onRotate()
+                        coroutineScope.launch {
+                            gameState = engine.rotatePiece(gameState)
+                            rotationCount++
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (isHapticEnabled) hapticManager.onRotate()
+                        }
                     }
                 },
                 onHardDrop = {
                     if (!gameState.isPaused) {
-                        gameState = engine.hardDrop(gameState)
-                        hardDropCount++
-                        piecesPlaced++
-                        if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
-                        if (isHapticEnabled) hapticManager.onLock()
+                        coroutineScope.launch {
+                            gameState = engine.hardDrop(gameState)
+                            hardDropCount++
+                            piecesPlaced++
+                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                            if (isHapticEnabled) hapticManager.onLock()
+                        }
                     }
                 },
                 modifier = Modifier.fillMaxWidth()
@@ -430,9 +433,11 @@ fun TetrisGame(
             gameState = gameState,
             highScore = highScore,
             onRestart = {
-                gameState = engine.resetGame(gameMode)
-                gameState = engine.spawnNewPiece(gameState)
-                resetAchievementStats()
+                coroutineScope.launch {
+                    gameState = engine.resetGame(gameMode)
+                    gameState = engine.spawnNewPiece(gameState)
+                    resetAchievementStats()
+                }
             },
             onBackToMenu = onBackToMenu
         )
@@ -440,12 +445,16 @@ fun TetrisGame(
         PauseMenuDialog(
             gameState = gameState,
             onResume = {
-                gameState = engine.togglePause(gameState)
+                coroutineScope.launch {
+                    gameState = engine.togglePause(gameState)
+                }
             },
             onRestart = {
-                gameState = engine.resetGame(gameMode)
-                gameState = engine.spawnNewPiece(gameState)
-                resetAchievementStats()
+                coroutineScope.launch {
+                    gameState = engine.resetGame(gameMode)
+                    gameState = engine.spawnNewPiece(gameState)
+                    resetAchievementStats()
+                }
             },
             onBackToMenu = onBackToMenu
         )
