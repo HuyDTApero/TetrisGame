@@ -65,6 +65,39 @@ fun TetrisGame(
     val coroutineScope = rememberCoroutineScope()
     val modeConfig = remember { com.example.tetrisgame.data.models.GameModeConfig.getConfig(gameMode) }
 
+    // Helper function for optimized hard drop with async processing
+    suspend fun performOptimizedHardDrop(): TetrisGameState {
+        return try {
+            // Try async processing first for better performance
+            engine.placePieceAndContinueAsync(
+                gameState.copy(
+                    currentPiece = engine.getGhostPieceOptimized(gameState)
+                )
+            )
+        } catch (e: Exception) {
+            // Fallback to synchronous processing
+            engine.hardDrop(gameState)
+        }
+    }
+
+    // Helper function for optimized auto-drop with potential line clearing
+    suspend fun performOptimizedAutoDrop(): TetrisGameState {
+        val piece = gameState.currentPiece ?: return gameState
+        val newPiece = piece.moveDown()
+
+        return if (gameState.board.isValidPositionOptimized(newPiece)) {
+            gameState.copy(currentPiece = newPiece)
+        } else {
+            // Piece can't move down, use async processing for placement and potential line clearing
+            try {
+                engine.placePieceAndContinueAsync(gameState)
+            } catch (e: Exception) {
+                // Fallback to synchronous processing
+                engine.movePieceDownOptimized(gameState)
+            }
+        }
+    }
+
     // Settings Manager - read all settings
     val settingsManager = remember { com.example.tetrisgame.data.managers.SettingsManager(context) }
     val sfxVolume by settingsManager.sfxVolume.collectAsState(initial = 0.7f)
@@ -272,7 +305,7 @@ fun TetrisGame(
         coroutineScope.launch {
             while (!gameState.isPaused && !gameState.isGameOver && gameState.currentPiece != null) {
                 delay(gameState.calculateDropSpeed())
-                gameState = engine.movePieceDown(gameState)
+                gameState = performOptimizedAutoDrop()
             }
         }
     }
@@ -313,7 +346,7 @@ fun TetrisGame(
                                 coroutineScope.launch {
                                     when (gestureType) {
                                         GestureType.SWIPE_LEFT -> {
-                                            gameState = engine.movePieceLeft(gameState)
+                                            gameState = engine.movePieceLeftOptimized(gameState)
                                             if (isSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
@@ -321,7 +354,7 @@ fun TetrisGame(
                                         }
 
                                         GestureType.SWIPE_RIGHT -> {
-                                            gameState = engine.movePieceRight(gameState)
+                                            gameState = engine.movePieceRightOptimized(gameState)
                                             if (isSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
@@ -329,7 +362,7 @@ fun TetrisGame(
                                         }
 
                                         GestureType.SWIPE_DOWN -> {
-                                            gameState = engine.movePieceDown(gameState)
+                                            gameState = engine.movePieceDownOptimized(gameState)
                                             if (isSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
@@ -337,7 +370,7 @@ fun TetrisGame(
                                         }
 
                                         GestureType.SWIPE_UP -> {
-                                            gameState = engine.hardDrop(gameState)
+                                            gameState = performOptimizedHardDrop()
                                             hardDropCount++
                                             piecesPlaced++
                                             if (isSoundEnabled) soundManager.playSound(
@@ -347,7 +380,7 @@ fun TetrisGame(
                                         }
 
                                         GestureType.TAP -> {
-                                            gameState = engine.rotatePiece(gameState)
+                                            gameState = engine.rotatePieceOptimized(gameState)
                                             rotationCount++
                                             if (isSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
@@ -380,7 +413,7 @@ fun TetrisGame(
                 onMoveLeft = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = engine.movePieceLeft(gameState)
+                            gameState = engine.movePieceLeftOptimized(gameState)
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
@@ -389,7 +422,7 @@ fun TetrisGame(
                 onMoveRight = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = engine.movePieceRight(gameState)
+                            gameState = engine.movePieceRightOptimized(gameState)
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
@@ -398,7 +431,7 @@ fun TetrisGame(
                 onMoveDown = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = engine.movePieceDown(gameState)
+                            gameState = engine.movePieceDownOptimized(gameState)
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
@@ -407,7 +440,7 @@ fun TetrisGame(
                 onRotate = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = engine.rotatePiece(gameState)
+                            gameState = engine.rotatePieceOptimized(gameState)
                             rotationCount++
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onRotate()
@@ -417,7 +450,7 @@ fun TetrisGame(
                 onHardDrop = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            gameState = engine.hardDrop(gameState)
+                            gameState = performOptimizedHardDrop()
                             hardDropCount++
                             piecesPlaced++
                             if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
