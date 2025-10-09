@@ -108,20 +108,21 @@ class EnhancedSoundManager(
 
     private fun playRealSound(soundType: SoundType) {
         soundIds[soundType]?.let { soundId ->
+            // Apply the current volume setting when playing
             soundPool?.play(soundId, soundVolume, soundVolume, 1, 0, 1.0f)
         }
     }
 
     private fun playSynthesizedSound(soundType: SoundType) {
-        // Fallback to generated sounds
+        // Fallback to generated sounds with current volume
         scope.launch {
             when (soundType) {
-                SoundType.MOVE -> SoundGenerator.playMoveSound()
-                SoundType.LOCK -> SoundGenerator.playDropSound()
-                SoundType.LINE_CLEAR -> SoundGenerator.playLineClearSound()
-                SoundType.TETRIS -> SoundGenerator.playTetrisSound()
-                SoundType.LEVEL_UP -> SoundGenerator.playLevelUpSound()
-                SoundType.GAME_OVER -> SoundGenerator.playGameOverSound()
+                SoundType.MOVE -> SoundGenerator.playMoveSound(soundVolume)
+                SoundType.LOCK -> SoundGenerator.playDropSound(soundVolume)
+                SoundType.LINE_CLEAR -> SoundGenerator.playLineClearSound(soundVolume)
+                SoundType.TETRIS -> SoundGenerator.playTetrisSound(soundVolume)
+                SoundType.LEVEL_UP -> SoundGenerator.playLevelUpSound(soundVolume)
+                SoundType.GAME_OVER -> SoundGenerator.playGameOverSound(soundVolume)
             }
         }
     }

@@ -31,10 +31,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.util.Log
 import com.example.tetrisgame.ai.AIAssistant
 import com.example.tetrisgame.ai.TetrisAI
 import com.example.tetrisgame.audio.EnhancedSoundManager
-import com.example.tetrisgame.audio.MusicGenerator
+import com.example.tetrisgame.audio.RealMusicManager
 import com.example.tetrisgame.game.TetrisEngine
 import com.example.tetrisgame.game.TetrisGameState
 import com.example.tetrisgame.input.GestureType
@@ -176,7 +177,7 @@ fun TetrisGame(
     val effectiveSoundEnabled =
         isSfxEnabledFromSettings && isSoundEnabled // Kết hợp với parameter để tương thích
     val effectiveMusicEnabled = isMusicEnabledFromSettings && isMusicEnabled
-    val musicGenerator = remember { MusicGenerator() }
+    val musicManager = remember { RealMusicManager(context) }
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
     val hapticManager = remember { HapticFeedbackManager(context) }
     val shakeController = rememberShakeController()
@@ -221,12 +222,12 @@ fun TetrisGame(
         soundManager.setSoundVolume(sfxVolume)
     }
     LaunchedEffect(musicVolume) {
-        musicGenerator.setVolume(musicVolume)
+        musicManager.setVolume(musicVolume)
     }
     DisposableEffect(Unit) {
         onDispose {
             soundManager.release()
-            musicGenerator.stopMusic()
+            musicManager.stopMusic()
         }
     }
 
@@ -234,7 +235,7 @@ fun TetrisGame(
         coroutineScope.launch {
             gameState = engine.spawnNewPiece(gameState)
             if (effectiveMusicEnabled) {
-                musicGenerator.startMusic(this)
+                musicManager.startMusic(coroutineScope)
             }
         }
     }
@@ -243,11 +244,11 @@ fun TetrisGame(
     LaunchedEffect(effectiveMusicEnabled, gameState.isPaused, gameState.isGameOver) {
         coroutineScope.launch {
             if (effectiveMusicEnabled && !gameState.isPaused && !gameState.isGameOver) {
-                if (!musicGenerator.isPlaying()) {
-                    musicGenerator.startMusic(this)
+                if (!musicManager.isPlaying()) {
+                    musicManager.startMusic(coroutineScope)
                 }
             } else {
-                musicGenerator.stopMusic()
+                musicManager.stopMusic()
             }
         }
     }

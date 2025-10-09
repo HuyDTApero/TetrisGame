@@ -51,6 +51,7 @@ object SoundGenerator {
                     .build()
 
                 audioTrack.write(buffer, 0, buffer.size)
+                audioTrack.setVolume(volume) // Apply volume to AudioTrack as well
                 audioTrack.play()
 
                 // Clean up after sound finishes
@@ -66,47 +67,47 @@ object SoundGenerator {
     /**
      * Play move sound (short, low beep)
      */
-    suspend fun playMoveSound() = playBeep(400.0, 50, 0.2f)
+    suspend fun playMoveSound(volume: Float = 0.5f) = playBeep(400.0, 50, volume)
 
     /**
      * Play rotate sound (medium beep)
      */
-    suspend fun playRotateSound() = playBeep(600.0, 80, 0.25f)
+    suspend fun playRotateSound(volume: Float = 0.5f) = playBeep(600.0, 80, volume)
 
     /**
      * Play drop sound (quick low to high)
      */
-    suspend fun playDropSound() = playBeep(300.0, 100, 0.3f)
+    suspend fun playDropSound(volume: Float = 0.6f) = playBeep(300.0, 100, volume)
 
     /**
      * Play line clear sound (rising tone)
      */
-    suspend fun playLineClearSound() = playBeep(800.0, 200, 0.35f)
+    suspend fun playLineClearSound(volume: Float = 0.7f) = playBeep(800.0, 200, volume)
 
     /**
      * Play Tetris sound (4 lines - triumphant)
      */
-    suspend fun playTetrisSound() {
-        playBeep(800.0, 100, 0.4f)
-        playBeep(1000.0, 100, 0.4f)
-        playBeep(1200.0, 150, 0.4f)
+    suspend fun playTetrisSound(volume: Float = 0.8f) {
+        playBeep(800.0, 100, volume)
+        playBeep(1000.0, 100, volume)
+        playBeep(1200.0, 150, volume)
     }
 
     /**
      * Play game over sound (descending)
      */
-    suspend fun playGameOverSound() {
-        playBeep(600.0, 150, 0.3f)
-        playBeep(400.0, 150, 0.3f)
-        playBeep(200.0, 300, 0.3f)
+    suspend fun playGameOverSound(volume: Float = 0.6f) {
+        playBeep(600.0, 150, volume)
+        playBeep(400.0, 150, volume)
+        playBeep(200.0, 300, volume)
     }
 
     /**
      * Play level up sound (ascending)
      */
-    suspend fun playLevelUpSound() {
-        playBeep(600.0, 100, 0.35f)
-        playBeep(800.0, 100, 0.35f)
-        playBeep(1000.0, 200, 0.35f)
+    suspend fun playLevelUpSound(volume: Float = 0.7f) {
+        playBeep(600.0, 100, volume)
+        playBeep(800.0, 100, volume)
+        playBeep(1000.0, 200, volume)
     }
 }
