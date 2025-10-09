@@ -38,6 +38,9 @@ class SettingsManager(private val context: Context) {
 
         // AI Assistant settings
         private val AI_ASSISTANT_ENABLED_KEY = booleanPreferencesKey("ai_assistant_enabled")
+
+        // UI settings
+        private val GESTURE_HINT_SHOWN_KEY = booleanPreferencesKey("gesture_hint_shown")
     }
 
     // Audio settings
@@ -80,6 +83,11 @@ class SettingsManager(private val context: Context) {
     // AI Assistant settings
     val isAIAssistantEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
         preferences[AI_ASSISTANT_ENABLED_KEY] ?: false
+    }
+
+    // UI settings
+    val isGestureHintShown: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[GESTURE_HINT_SHOWN_KEY] ?: false
     }
 
 
@@ -135,10 +143,17 @@ class SettingsManager(private val context: Context) {
         }
     }
 
+    suspend fun setGestureHintShown(shown: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[GESTURE_HINT_SHOWN_KEY] = shown
+        }
+    }
+
 
     suspend fun resetToDefaults() {
         context.dataStore.edit { preferences ->
             preferences.clear()
+            // Note: When cleared, gesture hint will show again (default false -> not shown yet)
         }
     }
 }

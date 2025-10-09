@@ -268,6 +268,31 @@ fun SettingsScreen(
                 // Reset Button
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
+
+                    // Reset Gesture Hint Button
+                    Button(
+                        onClick = {
+                            coroutineScope.launch {
+                                settingsManager.setGestureHintShown(false)
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF4CAF50).copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "🎮 SHOW GESTURE HINTS AGAIN",
+                            color = Color(0xFF4CAF50),
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Button(
                         onClick = {
                             coroutineScope.launch {

@@ -169,6 +169,8 @@ fun TetrisGame(
     val isHapticEnabled by settingsManager.isHapticEnabled.collectAsState(initial = true)
     val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
     val currentTheme by settingsManager.theme.collectAsState(initial = com.example.tetrisgame.data.models.GameTheme.NEON)
+    val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
+    val isGestureHintShown by settingsManager.isGestureHintShown.collectAsState(initial = false)
 
     // Use settings values instead of parameters
     val effectiveSoundEnabled =
@@ -187,13 +189,16 @@ fun TetrisGame(
     // AI Assistant integration
     val tetrisAI = remember { TetrisAI() }
     val aiAssistant = remember { AIAssistant(tetrisAI) }
-    val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
     var aiHint by remember { mutableStateOf<String?>(null) }
     var showAIHintOverlay by remember { mutableStateOf(false) }
 
     var previousScore by remember { mutableStateOf(0) }
     var previousLevel by remember { mutableStateOf(1) }
-    var showGestureHint by remember { mutableStateOf(true) }
+
+    // Show gesture hint only if it hasn't been shown before
+    var showGestureHint by remember(isGestureHintShown) {
+        mutableStateOf(!isGestureHintShown)
+    }
 
     // Achievement tracking (only for game-over check)
     var hardDropCount by remember { mutableStateOf(0) }
@@ -585,7 +590,12 @@ fun TetrisGame(
         // Gesture hint overlay (show for first few seconds)
         if (showGestureHint && !gameState.isGameOver) {
             GestureHintOverlay(
-                onDismiss = { showGestureHint = false }
+                onDismiss = {
+                    showGestureHint = false
+                    coroutineScope.launch {
+                        settingsManager.setGestureHintShown(true)
+                    }
+                }
             )
         }
 
