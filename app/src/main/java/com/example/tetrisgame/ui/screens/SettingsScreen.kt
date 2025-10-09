@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -41,6 +42,7 @@ fun SettingsScreen(
 
     // AI Assistant settings
     val isAIAssistantEnabled by settingsManager.isAIAssistantEnabled.collectAsState(initial = false)
+
 
     Box(
         modifier = Modifier
@@ -354,6 +356,9 @@ private fun SettingsSlider(
     onValueChange: (Float) -> Unit,
     valueDisplay: String
 ) {
+    // State local để tracking giá trị đang thay đổi
+    var localValue by remember(value) { mutableStateOf(value) }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -375,8 +380,11 @@ private fun SettingsSlider(
             )
         }
         Slider(
-            value = value,
-            onValueChange = onValueChange,
+            value = localValue,
+            onValueChange = { newValue ->
+                localValue = newValue
+                onValueChange(newValue)
+            },
             colors = SliderDefaults.colors(
                 thumbColor = Color(0xFF00D4FF),
                 activeTrackColor = Color(0xFF00D4FF),

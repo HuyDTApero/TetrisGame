@@ -15,7 +15,10 @@ class MusicGenerator {
     private var audioTrack: AudioTrack? = null
     private var musicJob: Job? = null
     private var isPlaying = false
-    private var volume = 0.15f // Lower volume for background music
+    private var currentVolume = 0.15f // Lower volume for background music
+
+    // For possible future use: hold current tone object
+    private var currentTone: AudioTrack? = null
 
     private val sampleRate = 44100
 
@@ -76,7 +79,7 @@ class MusicGenerator {
                         1.0
                     }
                     samples[i] = sin(2.0 * PI * i / (sampleRate / frequency)) * fadeOut
-                    buffer[i] = (samples[i] * Short.MAX_VALUE * volume).toInt().toShort()
+                    buffer[i] = (samples[i] * Short.MAX_VALUE * currentVolume).toInt().toShort()
                 }
 
                 val track = AudioTrack.Builder()
@@ -97,12 +100,16 @@ class MusicGenerator {
                     .setTransferMode(AudioTrack.MODE_STATIC)
                     .build()
 
+                currentTone = track
+
                 track.write(buffer, 0, buffer.size)
+                track.setVolume(currentVolume)
                 track.play()
 
                 delay(durationMs.toLong())
                 track.stop()
                 track.release()
+                if (currentTone === track) currentTone = null
             } catch (e: Exception) {
                 e.printStackTrace()
             }
@@ -120,10 +127,13 @@ class MusicGenerator {
             release()
         }
         audioTrack = null
+        currentTone = null
     }
 
-    fun setVolume(newVolume: Float) {
-        volume = newVolume.coerceIn(0.0f, 0.3f)
+    fun setVolume(volume: Float) {
+        currentVolume = volume.coerceIn(0f, 1f)
+        // Apply to current playing tone if exists
+        currentTone?.setVolume(currentVolume)
     }
 
     fun isPlaying(): Boolean = isPlaying

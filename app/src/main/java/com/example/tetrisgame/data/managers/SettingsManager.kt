@@ -97,14 +97,16 @@ class SettingsManager(private val context: Context) {
     }
 
     suspend fun setSfxVolume(volume: Float) {
+        val clampedVolume = volume.coerceIn(0f, 1f)
         context.dataStore.edit { preferences ->
-            preferences[SFX_VOLUME_KEY] = volume.coerceIn(0f, 1f)
+            preferences[SFX_VOLUME_KEY] = clampedVolume
         }
     }
 
     suspend fun setMusicVolume(volume: Float) {
+        val clampedVolume = volume.coerceIn(0f, 1f)
         context.dataStore.edit { preferences ->
-            preferences[MUSIC_VOLUME_KEY] = volume.coerceIn(0f, 1f)
+            preferences[MUSIC_VOLUME_KEY] = clampedVolume
         }
     }
 
@@ -115,8 +117,9 @@ class SettingsManager(private val context: Context) {
     }
 
     suspend fun setGestureSensitivity(sensitivity: Float) {
+        val clampedSensitivity = sensitivity.coerceIn(20f, 100f)
         context.dataStore.edit { preferences ->
-            preferences[GESTURE_SENSITIVITY_KEY] = sensitivity.coerceIn(20f, 100f)
+            preferences[GESTURE_SENSITIVITY_KEY] = clampedSensitivity
         }
     }
 

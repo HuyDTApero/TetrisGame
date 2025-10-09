@@ -162,11 +162,18 @@ fun TetrisGame(
 
     // Settings Manager - read all settings
     val settingsManager = remember { com.example.tetrisgame.data.managers.SettingsManager(context) }
+    val isSfxEnabledFromSettings by settingsManager.isSfxEnabled.collectAsState(initial = true)
+    val isMusicEnabledFromSettings by settingsManager.isMusicEnabled.collectAsState(initial = true)
     val sfxVolume by settingsManager.sfxVolume.collectAsState(initial = 0.7f)
     val musicVolume by settingsManager.musicVolume.collectAsState(initial = 0.5f)
     val isHapticEnabled by settingsManager.isHapticEnabled.collectAsState(initial = true)
     val gestureSensitivity by settingsManager.gestureSensitivity.collectAsState(initial = 50f)
     val currentTheme by settingsManager.theme.collectAsState(initial = com.example.tetrisgame.data.models.GameTheme.NEON)
+
+    // Use settings values instead of parameters
+    val effectiveSoundEnabled =
+        isSfxEnabledFromSettings && isSoundEnabled // Kết hợp với parameter để tương thích
+    val effectiveMusicEnabled = isMusicEnabledFromSettings && isMusicEnabled
     val musicGenerator = remember { MusicGenerator() }
     val soundManager = remember { EnhancedSoundManager(context, coroutineScope) }
     val hapticManager = remember { HapticFeedbackManager(context) }
@@ -221,16 +228,16 @@ fun TetrisGame(
     LaunchedEffect(Unit) {
         coroutineScope.launch {
             gameState = engine.spawnNewPiece(gameState)
-            if (isMusicEnabled) {
+            if (effectiveMusicEnabled) {
                 musicGenerator.startMusic(this)
             }
         }
     }
 
     // Control music based on game state with deferred check
-    LaunchedEffect(isMusicEnabled, gameState.isPaused, gameState.isGameOver) {
+    LaunchedEffect(effectiveMusicEnabled, gameState.isPaused, gameState.isGameOver) {
         coroutineScope.launch {
-            if (isMusicEnabled && !gameState.isPaused && !gameState.isGameOver) {
+            if (effectiveMusicEnabled && !gameState.isPaused && !gameState.isGameOver) {
                 if (!musicGenerator.isPlaying()) {
                     musicGenerator.startMusic(this)
                 }
@@ -249,12 +256,12 @@ fun TetrisGame(
 
                 if (scoreIncrease >= 1200) {
                     maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, 4)
-                    if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
+                    if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.TETRIS)
                     if (isHapticEnabled) hapticManager.onTetris()
                     shakeController.shake(intensity = 20f, duration = 200)
                 } else if (scoreIncrease > 0) {
                     maxLinesClearedAtOnce = maxOf(maxLinesClearedAtOnce, linesCleared)
-                    if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
+                    if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LINE_CLEAR)
                     if (isHapticEnabled) hapticManager.onLineClear()
                     shakeController.shake(intensity = 5f * linesCleared, duration = 100)
                 }
@@ -266,7 +273,7 @@ fun TetrisGame(
     LaunchedEffect(gameState.level) {
         coroutineScope.launch {
             if (gameState.level > previousLevel) {
-                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
+                if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LEVEL_UP)
                 if (isHapticEnabled) hapticManager.onLevelUp()
             }
             previousLevel = gameState.level
@@ -276,7 +283,7 @@ fun TetrisGame(
     LaunchedEffect(gameState.isGameOver) {
         coroutineScope.launch {
             if (gameState.isGameOver) {
-                if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
+                if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.GAME_OVER)
                 if (isHapticEnabled) hapticManager.onGameOver()
 
                 highScoreManager.saveGameResult(
@@ -409,7 +416,7 @@ fun TetrisGame(
                                     when (gestureType) {
                                         GestureType.SWIPE_LEFT -> {
                                             gameState = engine.movePieceLeftOptimized(gameState)
-                                            if (isSoundEnabled) soundManager.playSound(
+                                            if (effectiveSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
                                             if (isHapticEnabled) hapticManager.onMove()
@@ -417,7 +424,7 @@ fun TetrisGame(
 
                                         GestureType.SWIPE_RIGHT -> {
                                             gameState = engine.movePieceRightOptimized(gameState)
-                                            if (isSoundEnabled) soundManager.playSound(
+                                            if (effectiveSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
                                             if (isHapticEnabled) hapticManager.onMove()
@@ -425,7 +432,7 @@ fun TetrisGame(
 
                                         GestureType.SWIPE_DOWN -> {
                                             gameState = engine.movePieceDownOptimized(gameState)
-                                            if (isSoundEnabled) soundManager.playSound(
+                                            if (effectiveSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
                                             if (isHapticEnabled) hapticManager.onMove()
@@ -433,14 +440,14 @@ fun TetrisGame(
 
                                         GestureType.SWIPE_UP -> {
                                             coroutineScope.launch {
-                                                if (isSoundEnabled) soundManager.playSound(
+                                                if (effectiveSoundEnabled) soundManager.playSound(
                                                     EnhancedSoundManager.SoundType.MOVE
                                                 )
                                                 if (isHapticEnabled) hapticManager.onMove()
                                                 performAnimatedHardDrop()
                                                 hardDropCount++
                                                 piecesPlaced++
-                                                if (isSoundEnabled) soundManager.playSound(
+                                                if (effectiveSoundEnabled) soundManager.playSound(
                                                     EnhancedSoundManager.SoundType.LOCK
                                                 )
                                                 if (isHapticEnabled) hapticManager.onLock()
@@ -450,7 +457,7 @@ fun TetrisGame(
                                         GestureType.TAP -> {
                                             gameState = engine.rotatePieceOptimized(gameState)
                                             rotationCount++
-                                            if (isSoundEnabled) soundManager.playSound(
+                                            if (effectiveSoundEnabled) soundManager.playSound(
                                                 EnhancedSoundManager.SoundType.MOVE
                                             )
                                             if (isHapticEnabled) hapticManager.onRotate()
@@ -484,7 +491,7 @@ fun TetrisGame(
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
                             gameState = engine.movePieceLeftOptimized(gameState)
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
                     }
@@ -493,7 +500,7 @@ fun TetrisGame(
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
                             gameState = engine.movePieceRightOptimized(gameState)
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
                     }
@@ -502,7 +509,7 @@ fun TetrisGame(
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
                             gameState = engine.movePieceDownOptimized(gameState)
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                         }
                     }
@@ -512,7 +519,7 @@ fun TetrisGame(
                         coroutineScope.launch {
                             gameState = engine.rotatePieceOptimized(gameState)
                             rotationCount++
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onRotate()
                         }
                     }
@@ -520,12 +527,12 @@ fun TetrisGame(
                 onHardDrop = {
                     if (!gameState.isPaused) {
                         coroutineScope.launch {
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.MOVE)
                             if (isHapticEnabled) hapticManager.onMove()
                             performAnimatedHardDrop()
                             hardDropCount++
                             piecesPlaced++
-                            if (isSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
+                            if (effectiveSoundEnabled) soundManager.playSound(EnhancedSoundManager.SoundType.LOCK)
                             if (isHapticEnabled) hapticManager.onLock()
                         }
                     }
